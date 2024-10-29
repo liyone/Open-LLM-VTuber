@@ -1,4 +1,3 @@
-
 # Server
 PROTOCAL: "http://"
 HOST: "localhost"
@@ -76,6 +75,12 @@ memgpt:
   VERBOSE: True
 
 
+coze:
+  BASE_URL: "https://api.coze.com"
+  BOT_ID: "" # the id of the agent
+  PERSONAL_ACCESS_TOKEN: "" # your access token with proper permission (conversation, message)
+  USER_ID: "123pp"  # optional, will be randomed if not provided.
+  VERBOSE: False
 
 # ============== Live2D front-end Settings ==============
 

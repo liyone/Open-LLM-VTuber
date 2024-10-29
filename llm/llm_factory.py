@@ -3,6 +3,7 @@ from .llm_interface import LLMInterface
 from .ollama import LLM as OllamaLLM
 from .memGPT import LLM as MemGPTLLM
 from .fake_llm import LLM as FakeLLM
+from llm.coze_llm import LLM as CozeLLM
 
 
 class LLMFactory:
@@ -20,7 +21,6 @@ class LLMFactory:
                 verbose=kwargs.get("VERBOSE", False),
             )
         elif llm_provider == "mem0":
-            from llm.mem0 import LLM as Mem0LLM
             from llm.mem0_llm import LLM as Mem0LLM
             return Mem0LLM(
                 user_id=kwargs.get("USER_ID"),
@@ -43,6 +43,14 @@ class LLMFactory:
             )
         elif llm_provider == "fakellm":
             return FakeLLM()
+        elif llm_provider == "coze":
+            return CozeLLM(
+                base_url=kwargs.get("BASE_URL"),
+                bot_id=kwargs.get("BOT_ID"),
+                personal_access_token=kwargs.get("PERSONAL_ACCESS_TOKEN"),
+                user_id=kwargs.get("USER_ID"),
+                verbose=kwargs.get("VERBOSE", False)
+            )
         else:
             raise ValueError(f"Unsupported LLM provider: {llm_provider}")
 
