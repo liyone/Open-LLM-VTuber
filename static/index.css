@@ -1,5 +1,5 @@
 body {
-  background-image: url("./bg/cityscape.jpeg");
+  background-image: url("./bg/computer-room-illustration.jpeg");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center center;
@@ -56,21 +56,24 @@ body {
   flex-direction: column;
   align-items: center;
   z-index: 1000;
+  padding: 0 20px;
 }
 
 .fixed-bottom {
-  width: 100%;
-  background-color: rgba(33, 33, 33, 0.8);
+  width: 60%;
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: rgba(0, 0, 0, 0.6);
   color: white;
-  text-align: left;
+  text-align: center;
   padding: 15px;
   box-sizing: border-box;
-  max-height: 30vh;
+  min-height: 60px;
+  max-height: 300px;
   overflow-y: auto;
-  font-size: 2em;
-  /* Larger font size for the message */
+  font-size: 40px;
+  border-radius: 4px;
   line-height: 1.4;
-  /* Improved line spacing */
 }
 
 .control-buttons {
@@ -105,4 +108,18 @@ canvas {
   width: 100%;
   height: 100%;
   z-index: 1;
+}
+
+.user-message-container {
+  width: 60%;
+  max-width: 800px;
+  margin: 10px auto;
+  /* ... rest of the properties remain the same ... */
+}
+
+.text-input-container {
+  width: 60%;
+  max-width: 800px;
+  margin: 15px auto;
+  /* ... rest of the properties remain the same ... */
 }
