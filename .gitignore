@@ -33,7 +33,6 @@ models/*
 !models/piper_voice
 models/piper_voice/*
 
-
 # Legacy and specific directories
 legacy/
 chat_history/
@@ -44,3 +43,10 @@ openapi_memgpt.json
 
 # memory log
 mem.json
+conf.yaml
+# Ignore all files and directories in open-llm-vtuber
+open-llm-vtuber/*
+
+# Allow specific files or directories in open-llm-vtuber
+# !open-llm-vtuber/.gitignore
+# Add more negation patterns if needed

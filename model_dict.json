@@ -106,5 +106,23 @@
             "optimism": 1,
             "excitement": 6
         }
+    },
+    {
+        "name": "hiyori",
+        "description": "Silver-Haired Girl. Will fetch from CDN.",
+        "url": "/live2d-models/hiyori/hiyori_pro_t11.model3.json",
+        "kScale": 0.000625,
+        "kXOffset": 1150,
+        "idleMotionGroupName": "Idle",
+        "emotionMap": {
+            "neutral": 0,
+            "anger": 2,
+            "disgust": 2,
+            "fear": 1,
+            "joy": 3,
+            "smirk": 3,
+            "sadness": 1,
+            "surprise": 3
+        }
     }
 ]

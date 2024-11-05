@@ -156,7 +156,7 @@ class Live2dModel:
 
 
 if __name__ == "__main__":
-    live2d_model = Live2dModel("shizuku-local")
+    live2d_model = Live2dModel("hiyori")
     print(live2d_model.model_info)
     print(live2d_model.emo_map)
     print(live2d_model.emo_str)

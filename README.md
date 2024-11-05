@@ -1,7 +1,10 @@
 # Open-LLM-VTuber
 
+TO RUN
+open-llm-vtuber\Scripts\activate
+python server.py
 
-
+https://www.live2d.com/en/learn/sample/
 [![GitHub release](https://img.shields.io/github/v/release/t41372/Open-LLM-VTuber)](https://github.com/t41372/Open-LLM-VTuber/releases) 
 [![license](https://img.shields.io/github/license/t41372/Open-LLM-VTuber)](https://github.com/t41372/Open-LLM-VTuber/blob/master/LICENSE) 
 [![](https://img.shields.io/badge/t41372%2FOpen--LLM--VTuber-%25230db7ed.svg?logo=docker&logoColor=blue&labelColor=white&color=blue)](https://hub.docker.com/r/t41372/open-llm-vtuber) 
@@ -168,7 +171,10 @@ This project, by default, launches the audio interaction mode, meaning you can t
 
 Edit the `conf.yaml` for configurations. You can follow the configuration used in the demo video.
 
-If you want to use live2d, run `server.py`. Open the page `localhost:12393` (you can change this) with your browser, and you are ready. Once the live2D model appears on the screen, it's ready to talk to you.
+If you want to use live2d, run `
+
+
+.py`. Open the page `localhost:12393` (you can change this) with your browser, and you are ready. Once the live2D model appears on the screen, it's ready to talk to you.
 
 If you don't want the live2d, you can run `main.py` with Python for cli mode. 
 
