@@ -123,3 +123,35 @@ canvas {
   margin: 15px auto;
   /* ... rest of the properties remain the same ... */
 }
+
+/* Update the toggle button styles */
+#toggleMessageBox {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #005f7f;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  z-index: 1005; /* Increased z-index to be above everything */
+  font-size: 20px;
+  opacity: 0.8; /* Add some transparency */
+}
+
+#toggleMessageBox:hover {
+  background-color: #009fd4;
+  opacity: 1; /* Full opacity on hover */
+}
+
+/* Add a class for hiding the message box */
+.hidden {
+  display: none !important;
+}
+
+/* Add a class for hiding UI elements */
+.ui-hidden {
+  display: none !important;
+}

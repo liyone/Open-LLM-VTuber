@@ -108,6 +108,7 @@
         <input type="text" id="wsUrl" placeholder="WebSocket URL">
     </div>
 
+    <button id="toggleMessageBox">🎮 Toggle UI</button>
     <canvas id="canvas"></canvas>
 
     <div class="bottom-container">
@@ -406,7 +407,7 @@
             console.log("Mic start ");
             myvad.start();
             micToggleState = true;
-            micToggle.textContent = "🎙️Mic is On";
+            micToggle.textContent = "🎙Mic is On";
         }
 
         function stop_mic() {
@@ -707,6 +708,27 @@
         textInput.addEventListener('keydown', resetInactivityTimer);
         document.addEventListener('mousedown', resetInactivityTimer);
         document.addEventListener('touchstart', resetInactivityTimer);
+
+        // Add the toggle message box functionality to your existing JavaScript
+        const toggleMessageBox = document.getElementById('toggleMessageBox');
+        const messageBox = document.querySelector('.fixed-bottom');
+        const controlButtons = document.querySelector('.control-buttons');
+        const textInputContainer = document.querySelector('.text-input-container');
+        let uiVisible = true;
+
+        toggleMessageBox.addEventListener('click', function() {
+            uiVisible = !uiVisible;
+            
+            // Toggle visibility of UI elements EXCEPT the toggle button itself
+            [messageBox, controlButtons, textInputContainer].forEach(element => {
+                if (element) {  // Check if element exists
+                    element.classList.toggle('ui-hidden');
+                }
+            });
+            
+            // Update button text
+            toggleMessageBox.textContent = uiVisible ? "🎮 Toggle UI" : "👁️ Toggle UI";
+        });
     </script>
 </body>
 

@@ -24,6 +24,7 @@ class LLM(LLMInterface):
         project_id: str = "z",
         llm_api_key: str = "z",
         verbose: bool = False,
+        max_memory: int = 2,
     ):
         """
         Initializes an instance of the `ollama` class.
@@ -37,6 +38,7 @@ class LLM(LLMInterface):
         - project_id (str, optional): The project ID for the OpenAI API. Defaults to an empty string.
         - llm_api_key (str, optional): The API key for the OpenAI API. Defaults to an empty string.
         - verbose (bool, optional): Whether to enable verbose mode. Defaults to `False`.
+        - max_memory (int, optional): Maximum number of message pairs to keep in memory. If None, keeps all messages.
         """
 
         self.base_url = base_url
@@ -45,6 +47,7 @@ class LLM(LLMInterface):
         self.callback = callback
         self.memory = []
         self.verbose = verbose
+        self.max_memory = max_memory
         self.client = OpenAI(
             base_url=base_url,
             organization=organization_id,
@@ -86,6 +89,11 @@ class LLM(LLMInterface):
         print(" -- System: " + self.system)
 
     def chat_iter(self, prompt: str) -> Iterator[str]:
+        if self.max_memory is not None and len(self.memory) > (self.max_memory * 2 + 1):
+            self.memory = [
+                self.memory[0],
+                *self.memory[-(self.max_memory * 2):]
+            ]
 
         self.memory.append(
             {
