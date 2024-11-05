@@ -24,7 +24,7 @@ class LLM(LLMInterface):
         project_id: str = "z",
         llm_api_key: str = "z",
         verbose: bool = False,
-        max_memory: int = 2,
+        max_memory: int = 1,
     ):
         """
         Initializes an instance of the `ollama` class.
@@ -108,6 +108,8 @@ class LLM(LLMInterface):
             print(" -- Model: " + self.model)
             print(" -- System: " + self.system)
             print(" -- Prompt: " + prompt + "\n\n")
+        else:
+            self.__print_memory()
 
         chat_completion = []
         try:
