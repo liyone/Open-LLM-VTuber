@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Open-LLM-VTuber</title>
 
+
+
     <!-- pixi live2d dependencies -->
     <!-- Load Cubism and PixiJS -->
     <!-- <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script> -->
@@ -58,6 +60,23 @@
         #sendButton:hover {
             background-color: #45a049;
         }
+
+        .user-message-container {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+
+        .user-message-label {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .user-message {
+            color: white;
+        }
     </style>
 </head>
 
@@ -75,6 +94,11 @@
         <div class="control-buttons">
             <button id="micToggle">🎙️Mic is On</button>
             <button id="interruptBtn">🖐️Voice Interruption On</button>
+            <button id="randomModeBtn">🎲Random Mode Off</button>
+        </div>
+        <div class="user-message-container">
+            <span class="user-message-label">You:</span>
+            <span class="user-message" id="lastUserMessage">No message yet</span>
         </div>
         <div class="text-input-container">
             <input type="text" id="textInput" placeholder="Type your message here..." />
@@ -85,10 +109,12 @@
     <!-- <script src="./modelDict.js"></script> -->
     <script src="./live2d.js"></script>
 
-    <script>
+    <script >
         // idle: When the LLM is not thinking or speaking and is waiting for user input.
         // thinking-speaking: When the LLM is thinking or speaking.
         // interrupted: When the LLM is interrupted by the user.
+
+
         let state = "idle"; // idle, thinking-speaking, interrupted
         let audioPlayer = new Audio();
         let voiceInterruptionOn = true;
@@ -164,6 +190,8 @@
                 ws.send(JSON.stringify({ type: "mic-audio-data", audio: chunk }));
             }
             ws.send(JSON.stringify({ type: "mic-audio-end" }));
+            // Update the last user message display for voice input
+            document.getElementById("lastUserMessage").textContent = "(Voice Input)";
         }
 
         // window.addEventListener('load', init_vad);
@@ -236,6 +264,7 @@
                             if (!voiceInterruptionOn) {
                                 start_mic();
                             }
+                            startInactivityTimer(); // Restart timer after conversation ends
                             break;
                     }
                     break;
@@ -390,6 +419,8 @@
                     type: "text-input", 
                     text: message 
                 }));
+                // Update the last user message display
+                document.getElementById("lastUserMessage").textContent = message;
                 textInput.value = ""; // Clear the input box
             }
         }
@@ -402,6 +433,155 @@
         });
 
         sendButton.addEventListener('click', sendTextMessage);
+
+
+        let randomMode = false;
+        let inactivityTimer = null;
+        const INACTIVITY_TIMEOUT = 10000; // 10 seconds
+ // List of random prompts
+ const randomPrompts = [
+    "How's your day going?",
+    "Tell me something interesting.",
+    "What do you think about AI?",
+    "Do you have any hobbies?",
+    "What's your favorite food?",
+    "Tell me a joke.",
+    "What's the meaning of life?",
+    "If you could travel anywhere, where would you go?",
+    "What's your favorite book?",
+    "Tell me about yourself.",
+    "What's your favorite movie and why?",
+    "If you could learn any skill instantly, what would it be?",
+    "What's a fun fact you recently learned?",
+    "What was your dream job as a kid?",
+    "What's the best compliment you've ever received?",
+    "If you could live in any era, which one would you choose?",
+    "What's the most adventurous thing you've done?",
+    "Do you believe in aliens?",
+    "What's something you want to accomplish this year?",
+    "What’s your favorite way to unwind?",
+    "What's a habit you want to start?",
+    "What was the last thing you learned to cook?",
+    "If you could be famous for one thing, what would it be?",
+    "What animal would you choose to be and why?",
+    "What's your guilty pleasure song?",
+    "If you could meet any historical figure, who would it be?",
+    "What's the best piece of advice you've received?",
+    "What's something you're proud of?",
+    "What's your go-to karaoke song?",
+    "If you were a superhero, what would your powers be?",
+    "What’s the best concert you've been to?",
+    "What's a hidden talent you have?",
+    "What's one place you never want to visit?",
+    "If you were a character in a book, who would you be?",
+    "What's something you wish you knew more about?",
+    "What’s the funniest thing that happened to you recently?",
+    "What's your favorite holiday tradition?",
+    "If you could invent something, what would it be?",
+    "What's the last show you binge-watched?",
+    "What’s something you've always wanted to try?",
+    "What would be your perfect day?",
+    "If you could only eat one meal for the rest of your life, what would it be?",
+    "What's your spirit animal?",
+    "What’s a topic you could talk about for hours?",
+    "What's your favorite way to spend a weekend?",
+    "What’s something that instantly makes you happy?",
+    "Do you have any strange phobias?",
+    "What's your idea of a perfect vacation?",
+    "What's a language you wish you could speak?",
+    "What's the most interesting thing about you?",
+    "What's your favorite way to spend time outdoors?",
+    "What’s the most memorable gift you've received?",
+    "If you could swap lives with anyone, who would it be?",
+    "What's a question you wish people asked you more often?",
+    "What’s your favorite childhood memory?",
+    "What fictional place would you love to visit?",
+    "What’s your favorite thing to do on a rainy day?",
+    "If you had a million dollars, what would you do first?",
+    "What’s the best book you've read this year?",
+    "What’s something you've always wanted to learn?",
+    "What’s your favorite type of weather?",
+    "If you could visit any planet, which one would you choose?",
+    "What’s the most interesting conversation you’ve had recently?",
+    "What was your favorite toy growing up?",
+    "What's a goal you're working towards?",
+    "If you had a time machine, what time would you visit?",
+    "What’s the best meal you've ever had?",
+    "Do you believe in luck?",
+    "What's your favorite part of your daily routine?",
+    "If you could have dinner with any fictional character, who would it be?",
+    "What’s a movie that always makes you cry?",
+    "If you could only keep five possessions, what would they be?",
+    "What's a song you listen to on repeat?",
+    "What was your first job?",
+    "What's your favorite season and why?",
+    "What’s something you can’t live without?",
+    "What’s something you wish was never invented?",
+    "Do you believe in fate?",
+    "What's the last thing you bought that you loved?",
+    "If you could redo one day, what would it be?",
+    "What's something that instantly cheers you up?",
+    "What's the weirdest food combination you enjoy?",
+    "What’s a book that changed your life?",
+    "If you could teach a class on any subject, what would it be?",
+    "What's the best advice you've ever given?",
+    "What’s something you love to do but are terrible at?",
+    "What’s a small act of kindness that you’ve experienced?",
+    "If you could see any artist live, who would it be?",
+    "What's a job you think you'd be terrible at?",
+    "What's the best prank you've pulled on someone?",
+    "What’s a simple pleasure you enjoy daily?",
+    "If you had an extra hour every day, what would you do with it?",
+    "What's your biggest pet peeve?",
+    "What’s the most beautiful place you’ve been?",
+    "What’s one trend you just don’t get?",
+    "What's something people misunderstand about you?",
+    "If you could only wear one color for a year, what would it be?",
+    "What’s a food you could never get tired of?",
+    "What’s your favorite app on your phone?",
+    "What's something you're thankful for today?"
+];
+
+
+        function startInactivityTimer() {
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+            }
+            if (randomMode && state === "idle") {
+                inactivityTimer = setTimeout(() => {
+                    if (state === "idle") {
+                        const randomPrompt = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
+                        textInput.value = randomPrompt;
+                        sendTextMessage();
+                    }
+                }, INACTIVITY_TIMEOUT);
+            }
+        }
+
+        function resetInactivityTimer() {
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+            }
+            startInactivityTimer();
+        }
+
+        // Add this to your existing script section
+        const randomModeBtn = document.getElementById('randomModeBtn');
+        
+        randomModeBtn.addEventListener('click', function() {
+            randomMode = !randomMode;
+            randomModeBtn.textContent = randomMode ? "🎲Random Mode On" : "🎲Random Mode Off";
+            if (randomMode) {
+                startInactivityTimer();
+            } else {
+                clearTimeout(inactivityTimer);
+            }
+        });
+
+        // Add event listeners to reset timer on user activity
+        textInput.addEventListener('keydown', resetInactivityTimer);
+        document.addEventListener('mousedown', resetInactivityTimer);
+        document.addEventListener('touchstart', resetInactivityTimer);
     </script>
 </body>
 
