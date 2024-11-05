@@ -166,6 +166,39 @@ class WebSocketServer:
                                 print(f"😢Conversation was interrupted. {e}")
 
                         conversation_task = asyncio.create_task(_run_conversation())
+                    elif data.get("type") == "text-input":
+                        print("Received text input from front end.")
+                        user_input = data.get("text")
+
+                        async def _run_text_conversation():
+                            try:
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "control",
+                                            "text": "conversation-chain-start",
+                                        }
+                                    )
+                                )
+                                await asyncio.to_thread(
+                                    open_llm_vtuber.conversation_chain,
+                                    user_input=user_input,
+                                )
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "control",
+                                            "text": "conversation-chain-end",
+                                        }
+                                    )
+                                )
+                                print("Text Conversation Loop Completed")
+                            except asyncio.CancelledError:
+                                print("Text conversation task was cancelled.")
+                            except InterruptedError as e:
+                                print(f"😢Text conversation was interrupted. {e}")
+
+                        conversation_task = asyncio.create_task(_run_text_conversation())
                     else:
                         print("Unknown data type received.")
 
