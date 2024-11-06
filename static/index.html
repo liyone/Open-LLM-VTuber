@@ -319,13 +319,18 @@
                         case "conversation-chain-start":
                             setState("thinking-speaking");
                             fullResponse = "";
+                            // Clear any existing inactivity timer when conversation starts
+                            if (inactivityTimer) {
+                                clearTimeout(inactivityTimer);
+                            }
                             break;
                         case "conversation-chain-end":
                             setState("idle");
                             if (!voiceInterruptionOn) {
                                 start_mic();
                             }
-                            startInactivityTimer(); // Restart timer after conversation ends
+                            // Only start the inactivity timer after conversation ends
+                            startInactivityTimer();
                             break;
                     }
                     break;
@@ -397,17 +402,13 @@
 
         audioTaskQueue = new TaskQueue(100); // 100ms delay between tasks
         // Update addAudioTask to check interrupted state before adding
-        async function addAudioTask(audio_base64, volumes, slice_length, text = null, expression_list = null) {
+        function addAudioTask(audio_base64, volumes, slice_length, text = null, expression_list = null) {
             if (state === "interrupted") {
                 console.log("Skipping audio task due to interrupted state:", text);
                 return;
             }
             
             console.log(`1. Adding audio task ${text} to queue`);
-
-            // calculate the total duration of the audio
-            const audioLength = await getAudioLength(audio_base64);
-            console.log(`2. Audio length: ${audioLength}`);
 
             audioTaskQueue.addTask(async () => {
                 return new Promise((resolve, reject) => {
@@ -417,11 +418,16 @@
                         return;
                     }
 
-                    // Create new audio instance for each playback
+                    // Create a new audio instance for each task
                     const currentAudio = new Audio("data:audio/wav;base64," + audio_base64);
                     
                     currentAudio.onended = () => {
                         console.log(`3. Audio task ${text} completed`);
+                        // Clean up
+                        currentAudio.src = '';
+                        if (audioTaskQueue.isEmpty()) {
+                            startInactivityTimer();
+                        }
                         resolve();
                     };
 
@@ -453,7 +459,7 @@
                 return;
             }
 
-            fullResponse += text;
+            fullResponse += text || "";
             if (text) {
                 document.getElementById("message").textContent = text;
             }
@@ -461,11 +467,24 @@
             const displayExpression = expression_list ? expression_list[0] : null;
             console.log("Start playing audio: ", text);
             
-            audioInstance.play();
-            model2.speak(audioInstance.src, { 
-                expression: displayExpression, 
-                resetExpression: false 
-            });
+            try {
+                // Play the audio
+                const playPromise = audioInstance.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error("Audio playback failed:", error);
+                    });
+                }
+
+                // Set the expression and lip sync
+                model2.speak(audioInstance.src, { 
+                    expression: displayExpression, 
+                    resetExpression: false 
+                });
+            } catch (error) {
+                console.error("Error in playAudioLipSync:", error);
+            }
         }
 
         // Start the microphone. This will start the VAD and send audio to the server when speech is detected.
@@ -535,6 +554,7 @@
             }
             if (randomMode && state === "idle") {
                 inactivityTimer = setTimeout(() => {
+                    // Only proceed if we're still idle
                     if (state === "idle") {
                         const randomPrompt = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
                         textInput.value = randomPrompt;
