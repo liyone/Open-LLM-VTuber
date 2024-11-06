@@ -455,18 +455,19 @@ class OpenLLMVTuberMain:
 
         def consumer_worker():
             self.heard_sentence = ""
+            tasks_remaining = True
 
-            while True:
-
+            while tasks_remaining:
                 try:
                     if not self._continue_exec_flag.is_set():
                         raise InterruptedError("😱Consumer interrupted")
 
-                    audio_info = task_queue.get(
-                        timeout=0.1
-                    )  # Short timeout to check for interrupts
+                    audio_info = task_queue.get(timeout=0.1)  # Short timeout to check for interrupts
+                    
                     if audio_info is None:
+                        tasks_remaining = False
                         break  # End of production
+                        
                     if audio_info:
                         self.heard_sentence += audio_info["sentence"]
                         self._play_audio_file(
@@ -501,7 +502,9 @@ class OpenLLMVTuberMain:
                 "Conversation chain interrupted: consumer model interrupted"
             )
 
-        print("\n\n --- Audio generation and playback completed ---")
+        # Only print completion message if we weren't interrupted
+        if self._continue_exec_flag.is_set():
+            print("\n\n --- Audio generation and playback completed ---")
         return full_response[0]
 
     def interrupt(self, heard_sentence: str = "") -> None:
