@@ -118,8 +118,15 @@ class WebSocketServer:
                                 data.get("text"),
                                 "\033[0m\n",
                             )
-                            open_llm_vtuber.interrupt(data.get("text"))
-                            # conversation_task.cancel()
+                            # Wait for the interrupt to complete before proceeding
+                            await asyncio.to_thread(open_llm_vtuber.interrupt, data.get("text"))
+                            # Add this line to ensure the conversation task is properly cancelled
+                            if not conversation_task.done():
+                                conversation_task.cancel()
+                                try:
+                                    await conversation_task
+                                except asyncio.CancelledError:
+                                    print("Conversation task cancelled successfully")
 
                     elif data.get("type") == "mic-audio-data":
                         received_data_buffer = np.append(

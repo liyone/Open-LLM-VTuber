@@ -175,7 +175,7 @@
 
         // Update the TaskQueue clearing mechanism
         function clearAllQueues() {
-            // Clear both queues
+            // Clear both queues immediately
             if (audioTaskQueue) {
                 audioTaskQueue.clearQueue();
             }
@@ -189,7 +189,14 @@
                 audioPlayer.currentTime = 0;
             }
             
-            // Reset any pending tasks
+            // Clear any pending audio elements
+            const pendingAudios = document.querySelectorAll('audio');
+            pendingAudios.forEach(audio => {
+                audio.pause();
+                audio.remove();
+            });
+            
+            // Reset Live2D model
             if (model2) {
                 model2.stopSpeaking();
             }
@@ -202,8 +209,19 @@
             ws.send(JSON.stringify({ type: "interrupt-signal", text: fullResponse }));
             setState("interrupted");
             
-            // Clear all queues and stop audio
+            // Clear all queues and stop audio immediately
             clearAllQueues();
+            
+            // Stop the current audio playback
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+            }
+            
+            // Stop the Live2D model from speaking
+            if (model2) {
+                model2.stopSpeaking();
+            }
             
             // Clear the message display
             document.getElementById("message").textContent = "";
@@ -309,7 +327,7 @@
 
         wsStatus.addEventListener('click', connectWebSocket);
 
-        // Update handleMessage to ensure queue is clear when interrupted
+        // Update handleMessage to be more strict about interrupted state
         function handleMessage(message) {
             if (state === "interrupted") {
                 console.log("Message blocked due to interruption:", message);

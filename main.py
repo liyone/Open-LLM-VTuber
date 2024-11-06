@@ -509,18 +509,20 @@ class OpenLLMVTuberMain:
 
     def interrupt(self, heard_sentence: str = "") -> None:
         """Set the interrupt flag to stop the conversation chain.
-        Preferably provide the sentences that were already shown or heard by the user before the interrupt so that the LLM can handle the memory properly.
-
-        Parameters:
-        - heard_sentence (str): The sentence that was already shown or heard by the user before the interrupt.
-            (because apparently the user won't know the rest of the response.)
+        Preferably provide the sentences that were already shown or heard by the user before the interrupt.
         """
         self._continue_exec_flag.clear()
         self.llm.handle_interrupt(heard_sentence)
+        # Add this to ensure TTS cleanup
+        if self.tts:
+            self.tts.stop_current_audio()  # You'll need to implement this method in your TTS interface
 
     def _interrupt_post_processing(self) -> None:
-        """Perform post-processing tasks (like resetting the continue flag to allow next conversation chain to start) after an interrupt."""
+        """Perform post-processing tasks after an interrupt."""
         self._continue_exec_flag.set()  # Reset the interrupt flag
+        # Add cleanup for any remaining audio files
+        if self.tts:
+            self.tts.cleanup_pending_audio()  # You'll need to implement this method
 
     def _check_interrupt(self):
         """Check if we are in an interrupt state and raise an exception if we are."""

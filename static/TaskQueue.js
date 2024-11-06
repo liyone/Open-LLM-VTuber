@@ -17,6 +17,14 @@ class TaskQueue {
         this.queue = [];
         this.running = false;
         this.currentTask = null;
+        if (this.currentTask) {
+            try {
+                this.currentTask.abort();
+            } catch (e) {
+                console.log("Could not abort current task:", e);
+            }
+            this.currentTask = null;
+        }
     }
 
     async runNextTask() {
