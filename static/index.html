@@ -100,6 +100,7 @@
         }
     </style>
     <script src="randomPrompts.js"></script>
+    <script src="twitchWs.js"></script>
 </head>
 
 <body>
@@ -107,6 +108,8 @@
         <button id="wsStatus">Disconnected</button>
         <button id="stateDisplay">Status: loading</button>
         <input type="text" id="wsUrl" placeholder="WebSocket URL">
+        <input type="text" id="twitchChannel" placeholder="Twitch Channel">
+        <button id="twitchConnect">Connect to Twitch</button>
     </div>
 
     <button id="toggleMessageBox">🎮 Toggle UI</button>
@@ -585,6 +588,41 @@
             
             // Update button text
             toggleMessageBox.textContent = uiVisible ? "🎮 Toggle UI" : "👁️ Toggle UI";
+        });
+
+        let twitchChat = null;
+        const twitchChannel = document.getElementById('twitchChannel');
+        const twitchConnect = document.getElementById('twitchConnect');
+
+        function handleTwitchMessage(messageData) {
+            console.log(`Twitch message from ${messageData.displayName}: ${messageData.message}`);
+            
+            // Update the last user message display
+            document.getElementById("lastUserMessage").textContent = 
+                `[Twitch: ${messageData.displayName}] ${messageData.message}`;
+            
+            // Send the message to the LLM server
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                setState("thinking-speaking");
+                ws.send(JSON.stringify({ 
+                    type: "text-input", 
+                    text: messageData.message,
+                    source: "twitch",
+                    username: messageData.displayName
+                }));
+            }
+        }
+
+        twitchConnect.addEventListener('click', function() {
+            const channel = twitchChannel.value.trim();
+            if (channel) {
+                if (twitchChat) {
+                    twitchChat.disconnect();
+                }
+                twitchChat = new TwitchChat(channel, handleTwitchMessage);
+                twitchChat.connect();
+                twitchConnect.textContent = 'Connected to ' + channel;
+            }
         });
     </script>
 </body>

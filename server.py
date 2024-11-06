@@ -13,6 +13,7 @@ from starlette.websockets import WebSocketDisconnect
 from main import OpenLLMVTuberMain
 from live2d_model import Live2dModel
 from tts.stream_audio import AudioPayloadPreparer
+import websockets
 
 
 class WebSocketServer:
