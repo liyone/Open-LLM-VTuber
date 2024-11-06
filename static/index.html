@@ -98,6 +98,19 @@
             color: white;
             font-size: 40px;
         }
+
+        .twitch-notes {
+            color: #ffffff;
+            font-size: 30px;
+            margin-top: 5px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            max-width: 33%;
+            word-wrap: break-word;
+            white-space: normal;
+        }
     </style>
     <script src="randomPrompts.js"></script>
     <script src="twitchWs.js"></script>
@@ -110,6 +123,9 @@
         <input type="text" id="wsUrl" placeholder="WebSocket URL">
         <input type="text" id="twitchChannel" placeholder="Twitch Channel">
         <button id="twitchConnect">Connect to Twitch</button>
+        <div class="twitch-notes">
+            Note: Twitch chat messages must include "?" to be processed as questions
+        </div>
     </div>
 
     <button id="toggleMessageBox">🎮 Toggle UI</button>
@@ -616,6 +632,12 @@
 
         function handleTwitchMessage(messageData) {
             console.log(`Twitch message from ${messageData.displayName}: ${messageData.message}`);
+            
+            // Only process messages containing question marks
+            if (!messageData.message.includes('?')) {
+                console.log('Skipping non-question message from Twitch');
+                return;
+            }
             
             // Update the last user message display
             document.getElementById("lastUserMessage").textContent = 
