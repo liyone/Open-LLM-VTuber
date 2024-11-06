@@ -1,39 +1,43 @@
 class TaskQueue {
-    constructor(taskIntervalms=3000) {
+    constructor(taskIntervalms=100) {
         this.queue = [];
         this.running = false;
         this.taskInterval = taskIntervalms;
+        this.currentTask = null;
     }
 
     addTask(task) {
         this.queue.push(task);
-        this.runNextTask();
+        if (!this.running) {
+            this.runNextTask();
+        }
     }
 
     clearQueue() {
         this.queue = [];
+        this.running = false;
+        this.currentTask = null;
     }
 
     async runNextTask() {
         if (this.running || this.queue.length === 0) {
-            if (this.queue.length === 0) {
-                console.log("Queue is empty");
-            }
             return;
         }
 
         this.running = true;
-        const task = this.queue.shift();
+        this.currentTask = this.queue.shift();
         try {
-            await task();
+            await this.currentTask();
         } catch (error) {
             console.error('Task failed', error);
         }
+        this.currentTask = null;
         this.running = false;
-        setTimeout(() => this.runNextTask(), this.taskInterval);
-        // this.runNextTask();
+        
+        if (this.queue.length > 0) {
+            setTimeout(() => this.runNextTask(), this.taskInterval);
+        }
     }
 }
 
-// export default TaskQueue;
-const taskQueue = new TaskQueue()
+const taskQueue = new TaskQueue();

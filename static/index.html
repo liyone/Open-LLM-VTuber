@@ -153,13 +153,41 @@
             updateStateDisplay();
         }
 
+        // Update the TaskQueue clearing mechanism
+        function clearAllQueues() {
+            // Clear both queues
+            if (audioTaskQueue) {
+                audioTaskQueue.clearQueue();
+            }
+            if (taskQueue) {
+                taskQueue.clearQueue();
+            }
+            
+            // Stop any currently playing audio
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+            }
+            
+            // Reset any pending tasks
+            if (model2) {
+                model2.stopSpeaking();
+            }
+        }
+
+        // Update the interrupt function
         function interrupt() {
             console.log("😡👎 Interrupting conversation chain");
-            console.log("Sending: " + JSON.stringify({ type: "interrupt-signal", text: fullResponse }))
+            console.log("Sending: " + JSON.stringify({ type: "interrupt-signal", text: fullResponse }));
             ws.send(JSON.stringify({ type: "interrupt-signal", text: fullResponse }));
             setState("interrupted");
-            model2.stopSpeaking();
-            audioTaskQueue.clearQueue();
+            
+            // Clear all queues and stop audio
+            clearAllQueues();
+            
+            // Clear the message display
+            document.getElementById("message").textContent = "";
+            
             console.log("Interrupted!!!!");
         }
 
@@ -261,7 +289,14 @@
 
         wsStatus.addEventListener('click', connectWebSocket);
 
+        // Update handleMessage to ensure queue is clear when interrupted
         function handleMessage(message) {
+            if (state === "interrupted") {
+                console.log("Message blocked due to interruption:", message);
+                clearAllQueues(); // Ensure queues are clear
+                return;
+            }
+            
             console.log("Received Request: \n", message);
             switch (message.type) {
                 case "full-text":
@@ -357,17 +392,42 @@
         }
 
         audioTaskQueue = new TaskQueue(100); // 100ms delay between tasks
+        // Update addAudioTask to check interrupted state before adding
         async function addAudioTask(audio_base64, volumes, slice_length, text = null, expression_list = null) {
+            if (state === "interrupted") {
+                console.log("Skipping audio task due to interrupted state:", text);
+                return;
+            }
+            
             console.log(`1. Adding audio task ${text} to queue`);
 
             // calculate the total duration of the audio
-            audioLength = await getAudioLength(audio_base64);
+            const audioLength = await getAudioLength(audio_base64);
             console.log(`2. Audio length: ${audioLength}`);
 
             audioTaskQueue.addTask(async () => {
-                playAudioLipSync(audio_base64, volumes, slice_length, text, expression_list);
-                await new Promise(resolve => setTimeout(resolve, audioLength));
-                console.log(`3. Audio task ${text} completed`);
+                return new Promise((resolve, reject) => {
+                    if (state === "interrupted") {
+                        console.log("Skipping queued audio task due to interrupted state:", text);
+                        resolve();
+                        return;
+                    }
+
+                    // Create new audio instance for each playback
+                    const currentAudio = new Audio("data:audio/wav;base64," + audio_base64);
+                    
+                    currentAudio.onended = () => {
+                        console.log(`3. Audio task ${text} completed`);
+                        resolve();
+                    };
+
+                    currentAudio.onerror = (error) => {
+                        console.error('Audio playback error:', error);
+                        reject(error);
+                    };
+
+                    playAudioLipSync(currentAudio, volumes, slice_length, text, expression_list);
+                });
             });
         }
 
@@ -382,8 +442,7 @@
         }
 
 
-        function playAudioLipSync(audio_base64, volumes, slice_length, text = null, expression_list = null) {
-
+        function playAudioLipSync(audioInstance, volumes, slice_length, text = null, expression_list = null) {
             if (state === "interrupted") {
                 console.error("Audio playback blocked. Sentence:", text);
                 audioTaskQueue.clearQueue();
@@ -397,7 +456,12 @@
 
             const displayExpression = expression_list ? expression_list[0] : null;
             console.log("Start playing audio: ", text);
-            model2.speak("data:audio/wav;base64," + audio_base64, { expression: displayExpression, resetExpression: false });
+            
+            audioInstance.play();
+            model2.speak(audioInstance.src, { 
+                expression: displayExpression, 
+                resetExpression: false 
+            });
         }
 
         // Start the microphone. This will start the VAD and send audio to the server when speech is detected.
