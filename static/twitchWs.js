@@ -5,6 +5,11 @@ class TwitchChat {
         this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
+        this.userMessageTimes = new Map();
+        this.rateLimit = {
+            messages: 3,    // Maximum messages
+            timeWindow: 120000 // Time window in milliseconds (2 minutes)
+        };
     }
 
     connect() {
@@ -54,16 +59,46 @@ class TwitchChat {
             const match = message.match(regex);
             
             if (match) {
+                const username = match[2];
+                const messageText = match[3].trim();
+                
+                // Only process messages that contain a question mark
+                if (!messageText.includes('?')) {
+                    return null;
+                }
+                
+                if (this.isRateLimited(username)) {
+                    console.log(`Rate limited message from ${username}`);
+                    return null;
+                }
+
+                const userTimes = this.userMessageTimes.get(username) || [];
+                userTimes.push(Date.now());
+                this.userMessageTimes.set(username, userTimes);
+
                 return {
                     displayName: match[1] || match[2],
-                    username: match[2],
-                    message: match[3].trim()
+                    username: username,
+                    message: messageText
                 };
             }
         } catch (error) {
             console.error('Error parsing Twitch message:', error);
         }
         return null;
+    }
+
+    isRateLimited(username) {
+        const now = Date.now();
+        const userTimes = this.userMessageTimes.get(username) || [];
+        
+        const recentMessages = userTimes.filter(time => 
+            time > now - this.rateLimit.timeWindow
+        );
+        
+        this.userMessageTimes.set(username, recentMessages);
+        
+        return recentMessages.length >= this.rateLimit.messages;
     }
 
     disconnect() {
