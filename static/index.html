@@ -690,38 +690,16 @@
         
         ollamaVisionBtn.addEventListener('click', async function() {
             if (ws && ws.readyState === WebSocket.OPEN) {
-                // First set Ollama as provider with vision model
+                console.log("Sending vision request...");
+                
+                // Send vision request directly - no need to convert to base64
                 ws.send(JSON.stringify({
-                    type: "set-llm",
-                    provider: "ollama",
-                    config: {
-                        model: "llama2-vision",
-                        baseUrl: "http://localhost:11434/v1",
-                        api_key: "dummy-key"
-                    }
+                    type: "vision-request",
+                    content: "What is in this image?"
                 }));
-
-                // Convert test image to base64
-                try {
-                    const response = await fetch('/static/images/image.jpg');
-                    const blob = await response.blob();
-                    const reader = new FileReader();
-                    
-                    reader.onloadend = function() {
-                        const base64data = reader.result.split(',')[1];
-                        
-                        // Send vision request
-                        ws.send(JSON.stringify({
-                            type: "vision-request",
-                            content: "What is in this image?",
-                            image: base64data
-                        }));
-                    }
-                    
-                    reader.readAsDataURL(blob);
-                } catch (error) {
-                    console.error("Error processing image:", error);
-                }
+                
+                // Update UI to show request is processing
+                document.getElementById("message").textContent = "Processing image...";
             }
         });
     </script>

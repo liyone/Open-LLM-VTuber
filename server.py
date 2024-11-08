@@ -210,56 +210,48 @@ class WebSocketServer:
                     elif data.get("type") == "vision-request":
                         print("Processing vision request")
                         try:
-                            # Convert base64 to bytes
-                            # image_bytes = base64.b64decode()
-                            # print(image_bytes)
                             image_path = os.path.join(os.path.dirname(__file__), 'static', 'images', 'image.jpg')
-                            if os.path.exists(image_path):
-                                # Proceed with calling ollama.chat
-                                # response = await asyncio.to_thread(
-                                #     ollama.chat,
-                                #     model='llama3.2-vision',
-                                #     messages=[{
-                                #         'role': 'user',
-                                #         'content': data.get("content", "What is in this image?"),
-                                #         'images': [image_path]
-                                #     }]
-                                # )
-                                response = ollama.chat(
-                                    model='llama3.2-vision',
-                                    messages=[{
-                                        'role': 'user',
-                                        'content': 'What is in this image?',
-                                        'images': [image_path]
-                                    }]
-                                )
-
-                                print(response)
-                            else:
-                                print("Image does not exist.")
-                                response = await asyncio.to_thread(
-                                    ollama.chat,
-                                    model='llama3.2-vision',
-                                    messages=[{
-                                        'role': 'user',
-                                        'content': data.get("content", "What is in this image?"),
-                                        'images': [image_path]  # Pass the bytes directly
-                                    }]
-                                )
+                            print(f"Looking for image at: {image_path}")
                             
-                            if response:
+                            if os.path.exists(image_path):
+                                print(f"Image found at {image_path}")
+                                try:
+                                    response = ollama.chat(
+                                        model='llama3.2-vision',
+                                        messages=[{
+                                            'role': 'user',
+                                            'content': data.get("content", "What is in this image?"),
+                                            'images': [image_path]
+                                        }]
+                                    )
+                                    print(f"Ollama response: {response}")
+                                    
+                                    if response:
+                                        await websocket.send_text(json.dumps({
+                                            "type": "control",
+                                            "text": "conversation-chain-start"
+                                        }))
+                                        
+                                        await websocket.send_text(json.dumps({
+                                            "type": "full-text",
+                                            "text": response['message']['content']
+                                        }))
+                                        
+                                        await websocket.send_text(json.dumps({
+                                            "type": "control",
+                                            "text": "conversation-chain-end"
+                                        }))
+                                except Exception as e:
+                                    print(f"Ollama chat error: {str(e)}")
+                                    raise
+                            else:
+                                error_msg = f"Image not found at {image_path}"
+                                print(error_msg)
                                 await websocket.send_text(json.dumps({
-                                    "type": "control",
-                                    "text": "conversation-chain-start"
+                                    "type": "full-text", 
+                                    "text": error_msg
                                 }))
                                 
-                                # Process the response through TTS
-                                _play_audio_file(response['message']['content'], None)
-                                
-                                await websocket.send_text(json.dumps({
-                                    "type": "control",
-                                    "text": "conversation-chain-end"
-                                }))
                         except Exception as e:
                             error_msg = f"Vision request failed: {str(e)}"
                             print(error_msg)
@@ -281,6 +273,7 @@ class WebSocketServer:
             StaticFiles(directory="live2d-models"),
             name="live2d-models",
         )
+        # This mount should handle the static directory including images
         self.app.mount("/", StaticFiles(directory="./static", html=True), name="static")
 
     def run(self, host: str = "127.0.0.1", port: int = 8000, log_level: str = "info"):
