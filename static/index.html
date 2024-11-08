@@ -125,7 +125,9 @@
         <button id="twitchConnect">Connect to Twitch</button>
         <div class="twitch-notes">
             <!-- Note: Twitch chat messages must include "?" to be processed as questions -->
-             Please type anything in chat! rate limit is 4 messages every 2 minutes!
+             Please type anything in chat! Rate limit is 5 chat messages every minute per user.
+             <br/>
+             Image recognition by channel points coming soon!
         </div>
     </div>
 
@@ -655,10 +657,10 @@
             console.log(`Twitch message from ${messageData.displayName}: ${messageData.message}`);
             
             // Only process messages containing question marks
-            if (!messageData.message.includes('?')) {
-                console.log('Skipping non-question message from Twitch');
-                return;
-            }
+            // if (!messageData.message.includes('?')) {
+            //     console.log('Skipping non-question message from Twitch');
+            //     return;
+            // }
             
             // Update the last user message display
             document.getElementById("lastUserMessage").textContent = 

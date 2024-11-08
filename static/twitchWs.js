@@ -7,9 +7,10 @@ class TwitchChat {
         this.maxReconnectAttempts = 5;
         this.userMessageTimes = new Map();
         this.rateLimit = {
-            messages: 4,    // Maximum messages
-            timeWindow: 120000 // Time window in milliseconds (2 minutes)
+            messages: 5,     // Allow 20 messages
+            timeWindow: 60000 // In a 1-minute window
         };
+        this.cleanupInterval = setInterval(() => this.cleanupOldMessages(), 60000);
     }
 
     connect() {
@@ -92,18 +93,39 @@ class TwitchChat {
         const now = Date.now();
         const userTimes = this.userMessageTimes.get(username) || [];
         
+        // Only keep messages within the time window
         const recentMessages = userTimes.filter(time => 
-            time > now - this.rateLimit.timeWindow
+            now - time < this.rateLimit.timeWindow
         );
         
         this.userMessageTimes.set(username, recentMessages);
         
+        console.log(recentMessages.length)
+        console.log(this.rateLimit.messages)
         return recentMessages.length >= this.rateLimit.messages;
     }
 
     disconnect() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+        }
         if (this.ws) {
             this.ws.close();
+        }
+    }
+
+    cleanupOldMessages() {
+        const now = Date.now();
+        for (const [username, times] of this.userMessageTimes.entries()) {
+            const recentMessages = times.filter(time => 
+                now - time < this.rateLimit.timeWindow
+            );
+            
+            if (recentMessages.length === 0) {
+                this.userMessageTimes.delete(username);
+            } else {
+                this.userMessageTimes.set(username, recentMessages);
+            }
         }
     }
 } 
