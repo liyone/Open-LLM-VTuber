@@ -22,6 +22,8 @@ from urllib.parse import urlparse
 import base64
 import io
 from PIL import Image
+import time
+from collections import deque
 
 class WebSocketServer:
     """
@@ -49,6 +51,9 @@ class WebSocketServer:
         self._setup_routes()
         self._mount_static_files()
         self.app.include_router(self.router)
+        self.last_shown_image = None
+        self.recently_used_images = deque(maxlen=5)  # Keep track of last 5 images
+        random.seed(time.time())  # Seed with current time
 
     def _setup_routes(self):
         """Sets up the WebSocket and broadcast routes."""
@@ -280,20 +285,27 @@ class WebSocketServer:
                         image_files = [f for f in glob.glob(os.path.join('static', 'images', '*.jpg')) 
                                       if not f.endswith('image.jpg')]
                         
-                        # Keep track of last shown image to avoid repetition
-                        if not hasattr(self, 'last_shown_image'):
-                            self.last_shown_image = None
-                            
                         print(f"Available images: {image_files}")
                         if image_files:
-                            # Filter out the last shown image if there are other options
-                            if self.last_shown_image and len(image_files) > 1:
-                                image_files = [f for f in image_files if f != self.last_shown_image]
+                            # Filter out recently used images if we have enough options
+                            available_images = [f for f in image_files if f not in self.recently_used_images]
+                            
+                            # If we've used all images, reset the recently used list
+                            if not available_images:
+                                print("All images have been shown recently, resetting history")
+                                self.recently_used_images.clear()
+                                available_images = image_files
+                            
+                            # Reseed random for each selection
+                            random.seed(time.time())
                             
                             # Select a random image
-                            chosen_image = random.choice(image_files)
-                            self.last_shown_image = chosen_image
+                            chosen_image = random.choice(available_images)
                             print(f"Selected image: {chosen_image}")
+                            
+                            # Update tracking
+                            self.last_shown_image = chosen_image
+                            self.recently_used_images.append(chosen_image)
                             
                             # Copy the chosen image to image.jpg
                             shutil.copy(chosen_image, os.path.join('static', 'images', 'image.jpg'))
