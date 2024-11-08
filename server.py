@@ -271,12 +271,25 @@ class WebSocketServer:
                                 "text": error_msg
                             }))
                     elif data.get("type") == "random-vision-request":
-                        # Get list of all jpg files in the images directory
-                        image_files = glob.glob(os.path.join('static', 'images', '*.jpg'))
-                        print(image_files)
+                        # Get list of all jpg files in the images directory, excluding image.jpg
+                        image_files = [f for f in glob.glob(os.path.join('static', 'images', '*.jpg')) 
+                                      if not f.endswith('image.jpg')]
+                        
+                        # Keep track of last shown image to avoid repetition
+                        if not hasattr(self, 'last_shown_image'):
+                            self.last_shown_image = None
+                            
+                        print(f"Available images: {image_files}")
                         if image_files:
+                            # Filter out the last shown image if there are other options
+                            if self.last_shown_image and len(image_files) > 1:
+                                image_files = [f for f in image_files if f != self.last_shown_image]
+                            
                             # Select a random image
                             chosen_image = random.choice(image_files)
+                            self.last_shown_image = chosen_image
+                            print(f"Selected image: {chosen_image}")
+                            
                             # Copy the chosen image to image.jpg
                             shutil.copy(chosen_image, os.path.join('static', 'images', 'image.jpg'))
                             

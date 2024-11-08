@@ -507,7 +507,7 @@
                         console.log(`3. Audio task ${text} completed`);
                         // Clean up
                         currentAudio.src = '';
-                        // Check both random modes
+                        // Check both random modes and hide image if queue is empty
                         if (audioTaskQueue.isEmpty()) {
                             if (randomMode) {
                                 resetInactivityTimer();
@@ -515,6 +515,9 @@
                             if (randomVisionMode) {
                                 resetVisionInactivityTimer();
                             }
+                            // Hide the image when all audio is complete
+                            const img = document.getElementById('uploadedImage');
+                            img.style.display = 'none';
                         }
                         resolve();
                     };
@@ -766,10 +769,7 @@
             img.src = `images/image.jpg?t=${timestamp}`;
             img.style.display = 'block';
             
-            // Hide the image after 30 seconds
-            setTimeout(() => {
-                img.style.display = 'none';
-            }, 30000); // 30 seconds
+            // Remove the automatic timeout - we'll handle hiding in the audio completion
         }
 
         let randomVisionMode = false;
@@ -819,10 +819,40 @@
         randomVisionBtn.addEventListener('click', function() {
             randomVisionMode = !randomVisionMode;
             randomVisionBtn.textContent = randomVisionMode ? "📸Random Vision On" : "📸Random Vision Off";
-            if (randomVisionMode) {
-                startVisionInactivityTimer();
-            } else {
+            
+            // Hide/show image container based on mode
+            const img = document.getElementById('uploadedImage');
+            if (!randomVisionMode) {
+                img.style.display = 'none';
                 clearTimeout(visionInactivityTimer);
+            } else {
+                startVisionInactivityTimer();
+                // Don't show image immediately - let the timer trigger it
+            }
+        });
+
+        // Also update the ollamaVisionBtn to check random vision mode
+        ollamaVisionBtn.addEventListener('click', async function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // Only proceed if random vision is on
+                if (!randomVisionMode) {
+                    document.getElementById("message").textContent = "Please turn on Random Vision mode first";
+                    return;
+                }
+                
+                console.log("Sending vision request...");
+                
+                // Display the image
+                checkAndDisplayImage();
+                
+                // Send vision request
+                ws.send(JSON.stringify({
+                    type: "vision-request",
+                    content: "What is in this image? No more than 3 sentences"
+                }));
+                
+                // Update UI to show request is processing
+                document.getElementById("message").textContent = "Processing image...";
             }
         });
     </script>
