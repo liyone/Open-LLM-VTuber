@@ -27,6 +27,11 @@ class TaskQueue {
         }
     }
 
+    isEmpty() {
+        // Queue is empty if there are no tasks in queue and nothing is currently running
+        return this.queue.length === 0 && !this.running;
+    }
+
     async runNextTask() {
         if (this.running || this.queue.length === 0) {
             return;

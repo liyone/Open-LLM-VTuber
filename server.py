@@ -216,7 +216,8 @@ class WebSocketServer:
                             if os.path.exists(image_path):
                                 print(f"Image found at {image_path}")
                                 try:
-                                    response = ollama.chat(
+                                    # Get vision model response
+                                    vision_response = ollama.chat(
                                         model='llama3.2-vision',
                                         messages=[{
                                             'role': 'user',
@@ -224,18 +225,26 @@ class WebSocketServer:
                                             'images': [image_path]
                                         }]
                                     )
-                                    print(f"Ollama response: {response}")
+                                    print(f"Ollama vision response: {vision_response}")
                                     
-                                    if response:
+                                    if vision_response:
                                         await websocket.send_text(json.dumps({
                                             "type": "control",
                                             "text": "conversation-chain-start"
                                         }))
                                         
-                                        await websocket.send_text(json.dumps({
-                                            "type": "full-text",
-                                            "text": response['message']['content']
-                                        }))
+                                        # Create a prompt for the VTuber to describe what she sees
+                                        vtuber_prompt = (
+                                            f"Let me describe what I see in this image: "
+                                            f"{vision_response['message']['content']}"
+                                        )
+                                        
+                                        # Use conversation_chain with the vision response
+                                        await asyncio.to_thread(
+                                            open_llm_vtuber.conversation_chain,
+                                            user_input=vtuber_prompt,
+                                            skip_llm=True  # Skip LLM processing since we already have the response
+                                        )
                                         
                                         await websocket.send_text(json.dumps({
                                             "type": "control",

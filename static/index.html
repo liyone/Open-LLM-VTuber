@@ -101,7 +101,7 @@
 
         .twitch-notes {
             color: #ffffff;
-            font-size: 30px;
+            font-size: 40px;
             margin-top: 5px;
             background-color: rgba(0, 0, 0, 0.6);
             padding: 10px;
@@ -124,7 +124,8 @@
         <input type="text" id="twitchChannel" placeholder="Twitch Channel">
         <button id="twitchConnect">Connect to Twitch</button>
         <div class="twitch-notes">
-            Note: Twitch chat messages must include "?" to be processed as questions
+            <!-- Note: Twitch chat messages must include "?" to be processed as questions -->
+             Please type anything in chat! rate limit is 4 messages every 2 minutes!
         </div>
     </div>
 
@@ -460,8 +461,9 @@
                         console.log(`3. Audio task ${text} completed`);
                         // Clean up
                         currentAudio.src = '';
-                        if (audioTaskQueue.isEmpty()) {
-                            startInactivityTimer();
+                        // Only check for inactivity if we're using random mode
+                        if (audioTaskQueue.isEmpty() && randomMode) {
+                            resetInactivityTimer();
                         }
                         resolve();
                     };

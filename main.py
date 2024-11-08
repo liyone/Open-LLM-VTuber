@@ -198,23 +198,26 @@ class OpenLLMVTuberMain:
 
     # Main conversation methods
 
-    def conversation_chain(self, user_input: str | np.ndarray | None = None) -> str:
+    def conversation_chain(self, user_input: str | np.ndarray | None = None, skip_llm: bool = False) -> str:
         """
         One iteration of the main conversation.
         1. Get user input (text or audio) if not provided as an argument
-        2. Call the LLM with the user input
+        2. Call the LLM with the user input (unless skip_llm=True)
         3. Speak (or not)
 
         Parameters:
-        - user_input (str, numpy array, or None): The user input to be used in the conversation. If it's string, it will be considered as user input. If it's a numpy array, it will be transcribed. If it's None, we'll request input from the user.
+        - user_input (str, numpy array, or None): The user input to be used in the conversation. 
+          If it's string, it will be considered as user input. 
+          If it's a numpy array, it will be transcribed. 
+          If it's None, we'll request input from the user.
+        - skip_llm (bool): If True, treat user_input as direct text to speak without LLM processing
 
         Returns:
-        - str: The full response from the LLM
+        - str: The full response from the LLM or the direct text that was spoken
         """
-
         if not self._continue_exec_flag.wait(
             timeout=self.EXEC_FLAG_CHECK_TIMEOUT
-        ):  # Wait for the flag to be set
+        ):
             print(
                 ">> Execution flag not set. In interruption state for too long. Exiting conversation chain."
             )
@@ -247,6 +250,20 @@ class OpenLLMVTuberMain:
 
         print(f"User input: {user_input}")
 
+        if skip_llm:
+            # If skipping LLM, treat user_input as the response to speak
+            if not self.config.get("TTS_ON", False):
+                print(user_input)
+                return user_input
+                
+            full_response = self.speak(iter(user_input))
+            if self.verbose:
+                print(f"\nComplete response: [\n{full_response}\n]")
+                
+            print(f"{c[color_code]}Direct speech completed.")
+            return full_response
+
+        # Normal LLM processing path
         chat_completion: Iterator[str] = self.llm.chat_iter(user_input)
 
         if not self.config.get("TTS_ON", False):
