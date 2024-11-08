@@ -15,6 +15,8 @@ from live2d_model import Live2dModel
 from tts.stream_audio import AudioPayloadPreparer
 import websockets
 import ollama
+import random
+import glob
 
 class WebSocketServer:
     """
@@ -221,7 +223,7 @@ class WebSocketServer:
                                         model='llama3.2-vision',
                                         messages=[{
                                             'role': 'user',
-                                            'content': data.get("content", "What is in this image?"),
+                                            'content': data.get("content", "What is in this image? No more than 3 sentences"),
                                             'images': [image_path]
                                         }]
                                     )
@@ -267,6 +269,64 @@ class WebSocketServer:
                             await websocket.send_text(json.dumps({
                                 "type": "full-text",
                                 "text": error_msg
+                            }))
+                    elif data.get("type") == "random-vision-request":
+                        # Get list of all jpg files in the images directory
+                        image_files = glob.glob(os.path.join('static', 'images', '*.jpg'))
+                        print(image_files)
+                        if image_files:
+                            # Select a random image
+                            chosen_image = random.choice(image_files)
+                            # Copy the chosen image to image.jpg
+                            shutil.copy(chosen_image, os.path.join('static', 'images', 'image.jpg'))
+                            
+                            # Process the image with vision model
+                            try:
+                                vision_response = ollama.chat(
+                                    model='llama3.2-vision',
+                                    messages=[{
+                                        'role': 'user',
+                                        'content': data.get("content", "What is in this image? No more than 3 sentences"),
+                                        'images': [os.path.join('static', 'images', 'image.jpg')]
+                                    }]
+                                )
+                                
+                                if vision_response:
+                                    await websocket.send_text(json.dumps({
+                                        "type": "control",
+                                        "text": "conversation-chain-start"
+                                    }))
+                                    
+                                    vtuber_prompt = (
+                                        f"Let me describe what I see in this image: "
+                                        f"{vision_response['message']['content']}"
+                                    )
+                                    
+                                    await asyncio.to_thread(
+                                        open_llm_vtuber.conversation_chain,
+                                        user_input=vtuber_prompt,
+                                        skip_llm=True
+                                    )
+                                    
+                                    await websocket.send_text(json.dumps({
+                                        "type": "control",
+                                        "text": "conversation-chain-end"
+                                    }))
+                                    
+                                    # Signal vision completion
+                                    await websocket.send_text(json.dumps({
+                                        "type": "vision-complete"
+                                    }))
+                            except Exception as e:
+                                print(f"Vision processing error: {str(e)}")
+                                await websocket.send_text(json.dumps({
+                                    "type": "full-text",
+                                    "text": f"Error processing image: {str(e)}"
+                                }))
+                        else:
+                            await websocket.send_text(json.dumps({
+                                "type": "full-text",
+                                "text": "No images found in the images directory"
                             }))
                     else:
                         print("Unknown data type received.")

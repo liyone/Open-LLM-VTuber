@@ -178,6 +178,7 @@
             <button id="micToggle">🎙️Mic is On</button>
             <button id="interruptBtn">🖐️Voice Interruption On</button>
             <button id="randomModeBtn">🎲Random Mode Off</button>
+            <button id="randomVisionBtn">📸Random Vision Off</button>
             <button id="ollamaVisionBtn">👁️Test Vision</button>
         </div>
         <div class="user-message-container">
@@ -433,6 +434,11 @@
                 case "listExpressions":
                     console.log(listSupportedExpressions());
                     break;
+                case "vision-complete":
+                    if (randomVisionMode) {
+                        startVisionInactivityTimer();
+                    }
+                    break;
                 default:
                     console.error("Unknown message type: " + message.type);
                     console.log(message);
@@ -501,9 +507,14 @@
                         console.log(`3. Audio task ${text} completed`);
                         // Clean up
                         currentAudio.src = '';
-                        // Only check for inactivity if we're using random mode
-                        if (audioTaskQueue.isEmpty() && randomMode) {
-                            resetInactivityTimer();
+                        // Check both random modes
+                        if (audioTaskQueue.isEmpty()) {
+                            if (randomMode) {
+                                resetInactivityTimer();
+                            }
+                            if (randomVisionMode) {
+                                resetVisionInactivityTimer();
+                            }
                         }
                         resolve();
                     };
@@ -740,7 +751,7 @@
                 // Send vision request
                 ws.send(JSON.stringify({
                     type: "vision-request",
-                    content: "What is in this image?"
+                    content: "What is in this image? No more than 3 sentences"
                 }));
                 
                 // Update UI to show request is processing
@@ -760,6 +771,60 @@
                 img.style.display = 'none';
             }, 30000); // 30 seconds
         }
+
+        let randomVisionMode = false;
+        let visionInactivityTimer = null;
+        const VISION_INACTIVITY_TIMEOUT = 15000; // 15 seconds
+        const randomVisionBtn = document.getElementById('randomVisionBtn');
+
+        // Function to get a random image from the server
+        async function triggerRandomVision() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log("Triggering random vision request...");
+                
+                // Send request for random image processing
+                ws.send(JSON.stringify({
+                    type: "random-vision-request",
+                    content: "What do you see in this image?"
+                }));
+                
+                // Display the image
+                checkAndDisplayImage();
+                
+                // Update UI to show request is processing
+                document.getElementById("message").textContent = "Processing random image...";
+            }
+        }
+
+        function startVisionInactivityTimer() {
+            if (visionInactivityTimer) {
+                clearTimeout(visionInactivityTimer);
+            }
+            if (randomVisionMode && state === "idle") {
+                visionInactivityTimer = setTimeout(() => {
+                    if (state === "idle") {
+                        triggerRandomVision();
+                    }
+                }, VISION_INACTIVITY_TIMEOUT);
+            }
+        }
+
+        function resetVisionInactivityTimer() {
+            if (visionInactivityTimer) {
+                clearTimeout(visionInactivityTimer);
+            }
+            startVisionInactivityTimer();
+        }
+
+        randomVisionBtn.addEventListener('click', function() {
+            randomVisionMode = !randomVisionMode;
+            randomVisionBtn.textContent = randomVisionMode ? "📸Random Vision On" : "📸Random Vision Off";
+            if (randomVisionMode) {
+                startVisionInactivityTimer();
+            } else {
+                clearTimeout(visionInactivityTimer);
+            }
+        });
     </script>
 </body>
 
