@@ -244,9 +244,11 @@
                 model2.stopSpeaking();
             }
 
-            // Hide the current image
-            const img = document.getElementById('uploadedImage');
-            img.style.display = 'none';
+            // Only hide the image if we're not in random vision mode
+            if (!randomVisionMode) {
+                const img = document.getElementById('uploadedImage');
+                img.style.display = 'none';
+            }
 
             // If random vision is on, restart the timer
             if (randomVisionMode) {
@@ -301,14 +303,9 @@
                 },
                 onVADMisfire: () => {
                     console.log("VAD Misfire. The LLM can't hear you.");
-                    if (state === "interrupted") {
-                        state = "idle";
-                    }
                     document.getElementById("message").textContent = "The LLM can't hear you.";
                 },
                 onSpeechEnd: (audio) => {
-                    // audio: (Float32Array of audio samples at sample rate 16000)...
-
                     if (!voiceInterruptionOn) {
                         stop_mic();
                     }
@@ -412,9 +409,6 @@
                             break;
                         case "conversation-chain-end":
                             setState("idle");
-                            if (!voiceInterruptionOn) {
-                                start_mic();
-                            }
                             // Start both timers if their respective modes are on
                             if (randomMode) {
                                 startInactivityTimer();
@@ -447,6 +441,14 @@
                     break;
                 case "listExpressions":
                     console.log(listSupportedExpressions());
+                    break;
+                case "random-vision-request":
+                    // Show loading state
+                    const img = document.getElementById('uploadedImage');
+                    img.style.display = 'block';
+                    // Force reload the image with a timestamp to prevent caching
+                    const timestamp = new Date().getTime();
+                    img.src = `images/image.jpg?t=${timestamp}`;
                     break;
                 case "vision-complete":
                     if (randomVisionMode) {
@@ -814,15 +816,6 @@
             }
         });
 
-        // Update the image display when a new image is saved
-        function checkAndDisplayImage() {
-            const img = document.getElementById('uploadedImage');
-            const timestamp = new Date().getTime(); // Add timestamp to prevent caching
-            img.src = `images/image.jpg?t=${timestamp}`;
-            img.style.display = 'block';
-            
-            // Remove the automatic timeout - we'll handle hiding in the audio completion
-        }
 
         let randomVisionMode = false;
         let visionInactivityTimer = null;
