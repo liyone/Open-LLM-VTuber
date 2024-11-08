@@ -17,6 +17,11 @@ import websockets
 import ollama
 import random
 import glob
+import requests
+from urllib.parse import urlparse
+import base64
+import io
+from PIL import Image
 
 class WebSocketServer:
     """
@@ -340,6 +345,72 @@ class WebSocketServer:
                             await websocket.send_text(json.dumps({
                                 "type": "full-text",
                                 "text": "No images found in the images directory"
+                            }))
+                    elif data.get("type") == "vision-url-request":
+                        print("Processing vision URL request")
+                        try:
+                            image_url = data.get("url")
+                            if not image_url:
+                                raise ValueError("No image URL provided")
+
+                            # Validate URL
+                            parsed = urlparse(image_url)
+                            if not all([parsed.scheme, parsed.netloc]):
+                                raise ValueError("Invalid image URL")
+
+                            # Download the image
+                            response = requests.get(image_url, timeout=10)
+                            response.raise_for_status()
+
+                            # Save the downloaded image
+                            image_path = os.path.join('static', 'images', 'image.jpg')
+                            with open(image_path, 'wb') as f:
+                                f.write(response.content)
+
+                            # Process with vision model using the saved image
+                            vision_response = ollama.chat(
+                                model='llama3.2-vision',
+                                messages=[{
+                                    'role': 'user',
+                                    'content': data.get("content", "What is in this image? No more than 3 sentences"),
+                                    'images': [image_path]  # Use the saved image path
+                                }]
+                            )
+
+                            if vision_response:
+                                await websocket.send_text(json.dumps({
+                                    "type": "control",
+                                    "text": "conversation-chain-start"
+                                }))
+
+                                username = data.get("username", "Someone")
+                                vtuber_prompt = (
+                                    f"{username} shared an image with me. Let me describe what I see: "
+                                    f"{vision_response['message']['content']}"
+                                )
+
+                                await asyncio.to_thread(
+                                    open_llm_vtuber.conversation_chain,
+                                    user_input=vtuber_prompt,
+                                    skip_llm=True
+                                )
+
+                                await websocket.send_text(json.dumps({
+                                    "type": "control",
+                                    "text": "conversation-chain-end"
+                                }))
+
+                                # Signal vision completion
+                                await websocket.send_text(json.dumps({
+                                    "type": "vision-complete"
+                                }))
+
+                        except Exception as e:
+                            error_msg = f"Vision URL request failed: {str(e)}"
+                            print(error_msg)
+                            await websocket.send_text(json.dumps({
+                                "type": "full-text",
+                                "text": error_msg
                             }))
                     else:
                         print("Unknown data type received.")

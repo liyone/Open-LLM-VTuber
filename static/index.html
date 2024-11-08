@@ -243,6 +243,15 @@
             if (model2) {
                 model2.stopSpeaking();
             }
+
+            // Hide the current image
+            const img = document.getElementById('uploadedImage');
+            img.style.display = 'none';
+
+            // If random vision is on, restart the timer
+            if (randomVisionMode) {
+                resetVisionInactivityTimer();
+            }
         }
 
         // Update the interrupt function
@@ -406,8 +415,13 @@
                             if (!voiceInterruptionOn) {
                                 start_mic();
                             }
-                            // Only start the inactivity timer after conversation ends
-                            startInactivityTimer();
+                            // Start both timers if their respective modes are on
+                            if (randomMode) {
+                                startInactivityTimer();
+                            }
+                            if (randomVisionMode) {
+                                startVisionInactivityTimer();
+                            }
                             break;
                     }
                     break;
@@ -705,28 +719,66 @@
         const twitchChannel = document.getElementById('twitchChannel');
         const twitchConnect = document.getElementById('twitchConnect');
 
+        // Update the checkAndDisplayImage function to handle both local and URL images
+        function checkAndDisplayImage(imageUrl = null) {
+            const img = document.getElementById('uploadedImage');
+            
+            if (imageUrl) {
+                // If URL is provided, display directly from URL
+                img.src = imageUrl;
+            } else {
+                // Otherwise use local image.jpg with timestamp
+                const timestamp = new Date().getTime();
+                img.src = `images/image.jpg?t=${timestamp}`;
+            }
+            img.style.display = 'block';
+        }
+
+        // Update the handleTwitchMessage function to restrict image processing
         function handleTwitchMessage(messageData) {
             console.log(`Twitch message from ${messageData.displayName}: ${messageData.message}`);
             
-            // Only process messages containing question marks
-            // if (!messageData.message.includes('?')) {
-            //     console.log('Skipping non-question message from Twitch');
-            //     return;
-            // }
+            // Check if message contains an image URL
+            const imageUrlMatch = messageData.message.match(/(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/i);
             
             // Update the last user message display
             document.getElementById("lastUserMessage").textContent = 
                 `[Twitch: ${messageData.displayName}] ${messageData.message}`;
             
-            // Send the message to the LLM server
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                setState("thinking-speaking");
-                ws.send(JSON.stringify({ 
-                    type: "text-input", 
-                    text: messageData.message,
-                    source: "twitch",
-                    username: messageData.displayName
-                }));
+            if (imageUrlMatch) {
+                // Check if the message is from kanipuff (case insensitive)
+                if (messageData.displayName.toLowerCase() === 'kanipuff') {
+                    const imageUrl = imageUrlMatch[0];
+                    console.log('Processing image from kanipuff:', imageUrl);
+                    // Display the image directly from URL
+                    checkAndDisplayImage(imageUrl);
+                    
+                    // Send the image URL to the server for processing
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        setState("thinking-speaking");
+                        ws.send(JSON.stringify({ 
+                            type: "vision-url-request",
+                            url: imageUrl,
+                            content: "What is in this image? No more than 3 sentences",
+                            source: "twitch",
+                            username: messageData.displayName
+                        }));
+                    }
+                } else {
+                    // Optional: Inform that only kanipuff can share images
+                    document.getElementById("message").textContent = "Only kanipuff can share images for processing.";
+                }
+            } else {
+                // Handle regular text message
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    setState("thinking-speaking");
+                    ws.send(JSON.stringify({ 
+                        type: "text-input", 
+                        text: messageData.message,
+                        source: "twitch",
+                        username: messageData.displayName
+                    }));
+                }
             }
         }
 
