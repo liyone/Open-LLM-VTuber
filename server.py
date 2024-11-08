@@ -14,7 +14,7 @@ from main import OpenLLMVTuberMain
 from live2d_model import Live2dModel
 from tts.stream_audio import AudioPayloadPreparer
 import websockets
-
+import ollama
 
 class WebSocketServer:
     """
@@ -207,6 +207,66 @@ class WebSocketServer:
                                 print(f"😢Text conversation was interrupted. {e}")
 
                         conversation_task = asyncio.create_task(_run_text_conversation())
+                    elif data.get("type") == "vision-request":
+                        print("Processing vision request")
+                        try:
+                            # Convert base64 to bytes
+                            # image_bytes = base64.b64decode()
+                            # print(image_bytes)
+                            image_path = os.path.join(os.path.dirname(__file__), 'static', 'images', 'image.jpg')
+                            if os.path.exists(image_path):
+                                # Proceed with calling ollama.chat
+                                # response = await asyncio.to_thread(
+                                #     ollama.chat,
+                                #     model='llama3.2-vision',
+                                #     messages=[{
+                                #         'role': 'user',
+                                #         'content': data.get("content", "What is in this image?"),
+                                #         'images': [image_path]
+                                #     }]
+                                # )
+                                response = ollama.chat(
+                                    model='llama3.2-vision',
+                                    messages=[{
+                                        'role': 'user',
+                                        'content': 'What is in this image?',
+                                        'images': [image_path]
+                                    }]
+                                )
+
+                                print(response)
+                            else:
+                                print("Image does not exist.")
+                                response = await asyncio.to_thread(
+                                    ollama.chat,
+                                    model='llama3.2-vision',
+                                    messages=[{
+                                        'role': 'user',
+                                        'content': data.get("content", "What is in this image?"),
+                                        'images': [image_path]  # Pass the bytes directly
+                                    }]
+                                )
+                            
+                            if response:
+                                await websocket.send_text(json.dumps({
+                                    "type": "control",
+                                    "text": "conversation-chain-start"
+                                }))
+                                
+                                # Process the response through TTS
+                                _play_audio_file(response['message']['content'], None)
+                                
+                                await websocket.send_text(json.dumps({
+                                    "type": "control",
+                                    "text": "conversation-chain-end"
+                                }))
+                        except Exception as e:
+                            error_msg = f"Vision request failed: {str(e)}"
+                            print(error_msg)
+                            await websocket.send_text(json.dumps({
+                                "type": "full-text",
+                                "text": error_msg
+                            }))
                     else:
                         print("Unknown data type received.")
 

@@ -137,6 +137,7 @@
             <button id="micToggle">🎙️Mic is On</button>
             <button id="interruptBtn">🖐️Voice Interruption On</button>
             <button id="randomModeBtn">🎲Random Mode Off</button>
+            <button id="ollamaVisionBtn">👁️Test Vision</button>
         </div>
         <div class="user-message-container">
             <span class="user-message-label">You:</span>
@@ -682,6 +683,45 @@
                 twitchChat = new TwitchChat(channel, handleTwitchMessage);
                 twitchChat.connect();
                 twitchConnect.textContent = 'Connected to ' + channel;
+            }
+        });
+
+        const ollamaVisionBtn = document.getElementById('ollamaVisionBtn');
+        
+        ollamaVisionBtn.addEventListener('click', async function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // First set Ollama as provider with vision model
+                ws.send(JSON.stringify({
+                    type: "set-llm",
+                    provider: "ollama",
+                    config: {
+                        model: "llama2-vision",
+                        baseUrl: "http://localhost:11434/v1",
+                        api_key: "dummy-key"
+                    }
+                }));
+
+                // Convert test image to base64
+                try {
+                    const response = await fetch('/static/images/image.jpg');
+                    const blob = await response.blob();
+                    const reader = new FileReader();
+                    
+                    reader.onloadend = function() {
+                        const base64data = reader.result.split(',')[1];
+                        
+                        // Send vision request
+                        ws.send(JSON.stringify({
+                            type: "vision-request",
+                            content: "What is in this image?",
+                            image: base64data
+                        }));
+                    }
+                    
+                    reader.readAsDataURL(blob);
+                } catch (error) {
+                    console.error("Error processing image:", error);
+                }
             }
         });
     </script>

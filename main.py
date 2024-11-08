@@ -514,8 +514,8 @@ class OpenLLMVTuberMain:
         self._continue_exec_flag.clear()
         self.llm.handle_interrupt(heard_sentence)
         # Add this to ensure TTS cleanup
-        if self.tts:
-            self.tts.stop_current_audio()  # You'll need to implement this method in your TTS interface
+        # if self.tts:
+        #     self.tts.stop_current_audio()  # You'll need to implement this method in your TTS interface
 
     def _interrupt_post_processing(self) -> None:
         """Perform post-processing tasks after an interrupt."""

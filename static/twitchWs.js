@@ -7,7 +7,7 @@ class TwitchChat {
         this.maxReconnectAttempts = 5;
         this.userMessageTimes = new Map();
         this.rateLimit = {
-            messages: 3,    // Maximum messages
+            messages: 4,    // Maximum messages
             timeWindow: 120000 // Time window in milliseconds (2 minutes)
         };
     }
@@ -63,9 +63,9 @@ class TwitchChat {
                 const messageText = match[3].trim();
                 
                 // Only process messages that contain a question mark
-                if (!messageText.includes('?')) {
-                    return null;
-                }
+                // if (!messageText.includes('?')) {
+                //     return null;
+                // }
                 
                 if (this.isRateLimited(username)) {
                     console.log(`Rate limited message from ${username}`);
