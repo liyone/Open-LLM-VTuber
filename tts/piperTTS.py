@@ -17,6 +17,7 @@ class TTSEngine(TTSInterface):
     def __init__(self, voice_path, verbose=False):
         """Initialize the Piper TTS client."""
         self.verbose = verbose
+        print(f"Initializing PiperTTS with voice_path: {voice_path}")
         self.voice_model_path = voice_path
 
         if not self.voice_model_path or not os.path.exists(self.voice_model_path):
@@ -32,11 +33,15 @@ class TTSEngine(TTSInterface):
                 "models", "piper_voice", "en_US-amy-medium.onnx"
             )
 
+        print(f"Using voice model at: {self.voice_model_path}")
+
         self.piper_binary_path: str = (
             os.path.join("models", "piper_tts", "piper.exe")
             if platform.system() == "Windows"
             else os.path.join("models", "piper_tts", "piper")
         )
+
+        print(f"Piper binary path: {self.piper_binary_path}")
 
         if not os.path.exists(self.piper_binary_path):
             print(f"Piper TTS binary not found at {self.piper_binary_path}")
@@ -44,9 +49,6 @@ class TTSEngine(TTSInterface):
             import scripts.install_piper_tts
 
             scripts.install_piper_tts.setup_piper_tts()
-
-        # self.initialize_piper_cli()
-        # can't initialize and keep the process open because of racing conditions
 
     def initialize_piper_cli(self) -> subprocess.Popen:
         try:
@@ -58,47 +60,85 @@ class TTSEngine(TTSInterface):
                 "-d",
                 self.new_audio_dir,
             ]
-            return subprocess.Popen(
+            print(f"Initializing Piper CLI with command: {' '.join(command)}")
+            
+            process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
             )
+            print("Piper CLI process initialized successfully")
+            return process
         except Exception as e:
             print(f"Error initializing Piper TTS: {e}")
             raise e
 
     def generate_audio(self, text: str, file_name_no_ext=None):
+        print(f"\nGenerating audio for text: '{text}'")
+        print(f"File name: {file_name_no_ext}")
+
+        # Create a list to store the result from the thread
+        result = []
+
         def run_piper_tts():
+            print("Starting Piper TTS process...")
             with self.initialize_piper_cli() as process:
                 try:
+                    print(f"Sending text to Piper: '{text}'")
                     stdout, stderr = process.communicate(input=text)
 
                     if process.returncode != 0:
-                        if self.verbose:
-                            print(f"Error running Piper TTS command: {stderr}")
+                        print(f"Process failed with return code: {process.returncode}")
+                        print(f"stderr: {stderr}")
                         return None
 
                     output = stdout.strip()
+                    print(f"Raw stdout: '{stdout}'")
+                    print(f"Processed output: '{output}'")
 
                     if not output.endswith(".wav"):
-                        if self.verbose:
-                            print(f"Error running Piper TTS command:")
-                            print(f"Unexpected output: {output}")
+                        print(f"Error: Output doesn't end with .wav")
+                        print(f"Unexpected output format: {output}")
                         return None
 
-                    print(f'\n\nGenerated audio file: ""{output}""\n\n')
-                    return output
+                    # Verify the file exists and has content
+                    if os.path.exists(output):
+                        file_size = os.path.getsize(output)
+                        print(f"Generated file size: {file_size} bytes")
+                        if file_size == 0:
+                            print("Warning: Generated file is empty")
+                            return None
+                        # Store the result
+                        result.append(output)
+                    else:
+                        print(f"Error: Generated file not found at {output}")
+                        return None
+
+                    print(f'Successfully generated audio file: "{output}"')
 
                 except subprocess.CalledProcessError as e:
-                    if self.verbose:
-                        print(f"Error running Piper TTS command: {e}")
+                    print(f"Subprocess error: {str(e)}")
+                    print(f"Command output: {e.output if hasattr(e, 'output') else 'No output'}")
+                    return None
+                except Exception as e:
+                    print(f"Unexpected error in run_piper_tts: {str(e)}")
                     return None
                 finally:
+                    print("Cleaning up Piper process...")
                     process.kill()
                     process.wait()
+                    print("Piper process cleaned up")
 
+        print("Creating thread for Piper TTS...")
         thread = threading.Thread(target=run_piper_tts)
         thread.start()
+        print("Waiting for Piper TTS thread to complete...")
         thread.join()
+        print("Piper TTS thread completed")
+
+        # Return the result if we got one
+        if result:
+            return result[0]
+        return None

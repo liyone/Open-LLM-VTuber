@@ -290,7 +290,7 @@
                 preSpeechPadFrames: 10,
                 onSpeechStart: () => {
                     console.log("Speech start detected: " + previousTriggeredProbability);
-                    if (state === "thinking-speaking") {
+                    if (state === "thinking-speaking" && voiceInterruptionOn) {
                         interrupt();
                     } else {
                         console.log("😀👍 Not interrupted. Just normal conversation");
@@ -306,10 +306,6 @@
                     document.getElementById("message").textContent = "The LLM can't hear you.";
                 },
                 onSpeechEnd: (audio) => {
-                    if (!voiceInterruptionOn) {
-                        stop_mic();
-                    }
-
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         sendAudioPartition(audio);
                     }
@@ -394,7 +390,8 @@
                 case "control":
                     switch (message.text) {
                         case "start-mic":
-                            start_mic();
+                            // Remove automatic mic start - let user control it manually
+                            // start_mic();
                             break;
                         case "stop-mic":
                             stop_mic();
@@ -416,6 +413,7 @@
                             if (randomVisionMode) {
                                 startVisionInactivityTimer();
                             }
+                            // Remove automatic mic start after conversation
                             break;
                     }
                     break;
@@ -599,14 +597,26 @@
         async function start_mic() {
             if (myvad == null) await init_vad();
             console.log("Mic start ");
-            myvad.start();
-            micToggleState = true;
-            micToggle.textContent = "🎙Mic is On";
+            try {
+                await myvad.start();
+                micToggleState = true;
+                micToggle.textContent = "🎙️Mic is On";
+            } catch (error) {
+                console.error("Failed to start microphone:", error);
+                micToggleState = false;
+                micToggle.textContent = "❌Mic is off";
+            }
         }
 
         function stop_mic() {
             console.log("Mic stop");
-            myvad.pause();
+            if (myvad) {
+                try {
+                    myvad.pause();
+                } catch (error) {
+                    console.error("Error stopping microphone:", error);
+                }
+            }
             micToggleState = false;
             micToggle.textContent = "❌Mic is off";
         }
@@ -616,9 +626,19 @@
             interruptBtn.textContent = voiceInterruptionOn ? "🖐️Voice Interruption On" : "❌Voice Interruption Off";
         });
 
-        let micToggleState = true;
-        micToggle.addEventListener('click', function () {
-            micToggleState ? stop_mic() : start_mic();
+        let micToggleState = false;
+        micToggle.textContent = "❌Mic is off";
+        micToggle.addEventListener('click', async function() {
+            try {
+                if (micToggleState) {
+                    stop_mic();
+                } else {
+                    await start_mic();
+                }
+            } catch (error) {
+                console.error("Error toggling microphone:", error);
+                stop_mic(); // Ensure mic is off if there's an error
+            }
         });
 
         // Initialize WebSocket connection

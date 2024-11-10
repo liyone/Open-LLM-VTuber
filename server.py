@@ -245,10 +245,12 @@ class WebSocketServer:
                                             "text": "conversation-chain-start"
                                         }))
                                         
-                                        # Create a prompt for the VTuber to describe what she sees
-                                        vtuber_prompt = (
+                                        # Clean the response text
+                                        cleaned_response = self.clean_markdown(vision_response['message']['content'])
+                                        
+                                        vtuber_prompt = self.clean_markdown(
                                             f"Let me describe what I see in this image: "
-                                            f"{vision_response['message']['content']}"
+                                            f"{cleaned_response}"
                                         )
                                         
                                         # Use conversation_chain with the vision response
@@ -327,9 +329,12 @@ class WebSocketServer:
                                         "text": "conversation-chain-start"
                                     }))
                                     
-                                    vtuber_prompt = (
+                                    # Clean the response text
+                                    cleaned_response = self.clean_markdown(vision_response['message']['content'])
+                                    
+                                    vtuber_prompt = self.clean_markdown(
                                         f"Let me describe what I see in this image: "
-                                        f"{vision_response['message']['content']}"
+                                        f"{cleaned_response}"
                                     )
                                     
                                     await asyncio.to_thread(
@@ -395,12 +400,15 @@ class WebSocketServer:
                                     "text": "conversation-chain-start"
                                 }))
 
+                                # Clean the response text
+                                cleaned_response = self.clean_markdown(vision_response['message']['content'])
                                 username = data.get("username", "Someone")
-                                vtuber_prompt = (
+                                
+                                vtuber_prompt = self.clean_markdown(
                                     f"{username} shared an image with me. Let me describe what I see: "
-                                    f"{vision_response['message']['content']}"
+                                    f"{cleaned_response}"
                                 )
-
+                                
                                 await asyncio.to_thread(
                                     open_llm_vtuber.conversation_chain,
                                     user_input=vtuber_prompt,
@@ -452,6 +460,14 @@ class WebSocketServer:
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
             os.makedirs(cache_dir)
+
+    def clean_markdown(self, text: str) -> str:
+        """Remove markdown formatting from text."""
+        # Remove **text** formatting
+        text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+        # Remove *text* formatting
+        text = re.sub(r'\*(.*?)\*', r'\1', text)
+        return text
 
 
 def load_config_with_env(path) -> dict:
