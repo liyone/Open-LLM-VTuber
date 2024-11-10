@@ -1,4 +1,3 @@
-
 var app, model2;
 var modelInfo, emoMap;
 
@@ -33,12 +32,12 @@ const live2dModule = (function() {
       const scaleY = (innerHeight * modelInfo.kScale);
 
       model.scale.set(Math.min(scaleX, scaleY));
-      model.y = innerHeight * 0.01;
+      model.y = modelInfo.kYOffset ? modelInfo.kYOffset : innerHeight * 0.01;
       draggable(model);
     });
 
     model2 = models[0];
-    model2.x = app.view.width / 2 - model2.width / 2;
+    model2.x = modelInfo.kXOffset ? modelInfo.kXOffset : (app.view.width / 2 - model2.width / 2);
 
     // model2.on("hit", (hitAreas) => {
     //   if (hitAreas.includes("body")) {

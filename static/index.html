@@ -209,7 +209,7 @@
             <!-- Note: Twitch chat messages must include "?" to be processed as questions -->
              Please type anything in chat! Rate limit is 5 chat messages every minute per user.
              <br/>
-             Image recognition by channel points coming soon!
+             !revive to join the game
         </div>
         <div class="iframe-container">
             <iframe id="displayIframe"
@@ -789,23 +789,22 @@
             
             // Get the top-left UI elements
             const topLeftUI = document.querySelector('.top-left');
-            const twitchNotes = document.querySelector('.twitch-notes');
             
-            // Toggle visibility of UI elements EXCEPT the toggle button and twitch notes
-            [messageBox, controlButtons, textInputContainer, topLeftUI].forEach(element => {
-                if (element) {  // Check if element exists
-                    if (element === topLeftUI) {
-                        // For top-left UI, hide all children except twitch-notes
-                        Array.from(element.children).forEach(child => {
-                            if (!child.classList.contains('twitch-notes')) {
-                                child.style.display = uiVisible ? '' : 'none';
-                            }
-                        });
-                    } else {
-                        element.classList.toggle('ui-hidden');
-                    }
+            // Toggle visibility of UI elements EXCEPT the toggle button, twitch notes, and iframe
+            [messageBox, controlButtons, textInputContainer].forEach(element => {
+                if (element) {
+                    element.classList.toggle('ui-hidden');
                 }
             });
+            
+            // Only hide specific elements in top-left, excluding twitch-notes and iframe-container
+            if (topLeftUI) {
+                Array.from(topLeftUI.children).forEach(child => {
+                    if (!child.classList.contains('twitch-notes') && !child.classList.contains('iframe-container')) {
+                        child.style.display = uiVisible ? '' : 'none';
+                    }
+                });
+            }
             
             // Update button text
             toggleMessageBox.textContent = uiVisible ? "🎮 Toggle UI" : "👁️ Toggle UI";

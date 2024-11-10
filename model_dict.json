@@ -112,7 +112,7 @@
         "description": "Silver-Haired Girl. Will fetch from CDN.",
         "url": "/live2d-models/hiyori/hiyori_pro_t11.model3.json",
         "kScale": 0.000625,
-        "kXOffset": 1150,
+        "kYOffset": -100,
         "idleMotionGroupName": "Idle",
         "emotionMap": {
             "neutral": 0,
