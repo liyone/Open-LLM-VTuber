@@ -173,6 +173,22 @@
         .iframe-container:not(:has(#displayIframe[style*="display: block"])) {
             display: none;
         }
+
+        /* Add to your existing styles */
+        .ui-hidden {
+            display: none !important;
+        }
+        
+        .top-left {
+            position: fixed;
+            top: 20px;
+            left: 30px;
+            z-index: 1000;
+        }
+        
+        .top-left > *:not(.twitch-notes) {
+            margin-bottom: 5px;
+        }
     </style>
     <script src="randomPrompts.js"></script>
     <script src="twitchWs.js"></script>
@@ -767,10 +783,23 @@
         toggleMessageBox.addEventListener('click', function() {
             uiVisible = !uiVisible;
             
-            // Toggle visibility of UI elements EXCEPT the toggle button itself
-            [messageBox, controlButtons, textInputContainer].forEach(element => {
+            // Get the top-left UI elements
+            const topLeftUI = document.querySelector('.top-left');
+            const twitchNotes = document.querySelector('.twitch-notes');
+            
+            // Toggle visibility of UI elements EXCEPT the toggle button and twitch notes
+            [messageBox, controlButtons, textInputContainer, topLeftUI].forEach(element => {
                 if (element) {  // Check if element exists
-                    element.classList.toggle('ui-hidden');
+                    if (element === topLeftUI) {
+                        // For top-left UI, hide all children except twitch-notes
+                        Array.from(element.children).forEach(child => {
+                            if (!child.classList.contains('twitch-notes')) {
+                                child.style.display = uiVisible ? '' : 'none';
+                            }
+                        });
+                    } else {
+                        element.classList.toggle('ui-hidden');
+                    }
                 }
             });
             
