@@ -124,5 +124,23 @@
             "sadness": 1,
             "surprise": 3
         }
+    },
+    {
+        "name": "izumi",
+        "description": "Local izumi model",
+        "url": "/live2d-models/izumi/izumi_illust.model3.json",
+        "kScale": 0.002,
+        "kXOffset": 1150,
+        "idleMotionGroupName": "Idle",
+        "emotionMap": {
+            "neutral": 0,
+            "anger": 2,
+            "disgust": 2,
+            "fear": 1,
+            "joy": 3,
+            "smirk": 3,
+            "sadness": 1,
+            "surprise": 3
+        }
     }
 ]

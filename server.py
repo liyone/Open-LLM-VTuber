@@ -52,7 +52,7 @@ class WebSocketServer:
         self._mount_static_files()
         self.app.include_router(self.router)
         self.last_shown_image = None
-        self.recently_used_images = deque(maxlen=5)  # Keep track of last 5 images
+        self.recently_used_images = deque(maxlen=15)  # Keep track of last 15 images
         random.seed(time.time())  # Seed with current time
 
     def _setup_routes(self):
@@ -284,10 +284,15 @@ class WebSocketServer:
                             }))
                     elif data.get("type") == "random-vision-request":
                         # Get list of all jpg files in the images directory, excluding image.jpg
-                        image_files = [f for f in glob.glob(os.path.join('static', 'images', '*.jpg')) 
-                                      if not f.endswith('image.jpg')]
-                        
+                        image_files = []
+                        for ext in ['*.jpg', '*.jpeg', '*.png']:
+                            image_files.extend(
+                                [f for f in glob.glob(os.path.join('static', 'images', ext)) 
+                                if not f.endswith('image.jpg')]
+                            )
+
                         print(f"Available images: {image_files}")
+
                         if image_files:
                             # Filter out recently used images if we have enough options
                             available_images = [f for f in image_files if f not in self.recently_used_images]
@@ -297,9 +302,6 @@ class WebSocketServer:
                                 print("All images have been shown recently, resetting history")
                                 self.recently_used_images.clear()
                                 available_images = image_files
-                            
-                            # Reseed random for each selection
-                            random.seed(time.time())
                             
                             # Select a random image
                             chosen_image = random.choice(available_images)
