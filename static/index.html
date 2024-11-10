@@ -128,6 +128,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            width: fit-content;
+            height: fit-content;
         }
 
         .iframe-container {
@@ -144,11 +146,14 @@
         }
 
         #uploadedImage {
-            max-width: 100%; /* Image will scale within container */
-            max-height: 80vh; /* Limit height to 80% of viewport height */
+            max-width: 600px; /* Limit maximum width */
+            max-height: 600px; /* Limit maximum height */
+            width: auto; /* Allow image to maintain aspect ratio */
+            height: auto; /* Allow image to maintain aspect ratio */
             border-radius: 6px;
             display: none;
             margin: 0 auto;
+            object-fit: contain; /* Ensure image maintains aspect ratio */
         }
 
         #toggleMessageBox {
