@@ -221,66 +221,32 @@ class WebSocketServer:
                         conversation_task = asyncio.create_task(_run_text_conversation())
                     elif data.get("type") == "vision-request":
                         print("Processing vision request")
-                        try:
-                            image_path = os.path.join(os.path.dirname(__file__), 'static', 'images', 'image.jpg')
-                            print(f"Looking for image at: {image_path}")
+                        image_path = os.path.join(os.path.dirname(__file__), 'static', 'images', 'image.jpg')
+                        result = self.process_vision_request(
+                            image_path=image_path,
+                            content=data.get("content", "What is in this image? No more than 3 sentences")
+                        )
+                        
+                        if result["success"]:
+                            await websocket.send_text(json.dumps({
+                                "type": "control",
+                                "text": "conversation-chain-start"
+                            }))
                             
-                            if os.path.exists(image_path):
-                                print(f"Image found at {image_path}")
-                                try:
-                                    # Get vision model response
-                                    vision_response = ollama.chat(
-                                        model='llama3.2-vision',
-                                        messages=[{
-                                            'role': 'user',
-                                            'content': data.get("content", "What is in this image? No more than 3 sentences"),
-                                            'images': [image_path]
-                                        }]
-                                    )
-                                    print(f"Ollama vision response: {vision_response}")
-                                    
-                                    if vision_response:
-                                        await websocket.send_text(json.dumps({
-                                            "type": "control",
-                                            "text": "conversation-chain-start"
-                                        }))
-                                        
-                                        # Clean the response text
-                                        cleaned_response = self.clean_markdown(vision_response['message']['content'])
-                                        
-                                        vtuber_prompt = self.clean_markdown(
-                                            f"Let me describe what I see in this image: "
-                                            f"{cleaned_response}"
-                                        )
-                                        
-                                        # Use conversation_chain with the vision response
-                                        await asyncio.to_thread(
-                                            open_llm_vtuber.conversation_chain,
-                                            user_input=vtuber_prompt,
-                                            skip_llm=True  # Skip LLM processing since we already have the response
-                                        )
-                                        
-                                        await websocket.send_text(json.dumps({
-                                            "type": "control",
-                                            "text": "conversation-chain-end"
-                                        }))
-                                except Exception as e:
-                                    print(f"Ollama chat error: {str(e)}")
-                                    raise
-                            else:
-                                error_msg = f"Image not found at {image_path}"
-                                print(error_msg)
-                                await websocket.send_text(json.dumps({
-                                    "type": "full-text", 
-                                    "text": error_msg
-                                }))
-                                
-                        except Exception as e:
-                            error_msg = f"Vision request failed: {str(e)}"
-                            print(error_msg)
+                            await asyncio.to_thread(
+                                open_llm_vtuber.conversation_chain,
+                                user_input=result["prompt"],
+                                skip_llm=True
+                            )
+                            
+                            await websocket.send_text(json.dumps({
+                                "type": "control",
+                                "text": "conversation-chain-end"
+                            }))
+                        else:
                             await websocket.send_text(json.dumps({
                                 "type": "full-text",
-                                "text": error_msg
+                                "text": f"Vision request failed: {result['error']}"
                             }))
                     elif data.get("type") == "random-vision-request":
                         # Get list of all jpg files in the images directory, excluding image.jpg
@@ -288,7 +254,7 @@ class WebSocketServer:
                         for ext in ['*.jpg', '*.jpeg', '*.png']:
                             image_files.extend(
                                 [f for f in glob.glob(os.path.join('static', 'images', ext)) 
-                                if not f.endswith('image.jpg')]
+                                 if not f.endswith('image.jpg')]
                             )
 
                         print(f"Available images: {image_files}")
@@ -312,53 +278,40 @@ class WebSocketServer:
                             self.recently_used_images.append(chosen_image)
                             
                             # Copy the chosen image to image.jpg
-                            shutil.copy(chosen_image, os.path.join('static', 'images', 'image.jpg'))
+                            target_path = os.path.join('static', 'images', 'image.jpg')
+                            shutil.copy(chosen_image, target_path)
                             
                             # Process the image with vision model
-                            try:
-                                vision_response = ollama.chat(
-                                    model='llama3.2-vision',
-                                    messages=[{
-                                        'role': 'user',
-                                        'content': data.get("content", "What is in this image? No more than 3 sentences"),
-                                        'images': [os.path.join('static', 'images', 'image.jpg')]
-                                    }]
+                            result = self.process_vision_request(
+                                image_path=target_path,
+                                content=data.get("content", "What is in this image? No more than 3 sentences")
+                            )
+                            
+                            if result["success"]:
+                                await websocket.send_text(json.dumps({
+                                    "type": "control",
+                                    "text": "conversation-chain-start"
+                                }))
+                                
+                                await asyncio.to_thread(
+                                    open_llm_vtuber.conversation_chain,
+                                    user_input=result["prompt"],
+                                    # skip_llm=True # enable this if you want to directly read
                                 )
                                 
-                                if vision_response:
-                                    await websocket.send_text(json.dumps({
-                                        "type": "control",
-                                        "text": "conversation-chain-start"
-                                    }))
-                                    
-                                    # Clean the response text
-                                    cleaned_response = self.clean_markdown(vision_response['message']['content'])
-                                    
-                                    vtuber_prompt = self.clean_markdown(
-                                        f"Let me describe what I see in this image: "
-                                        f"{cleaned_response}"
-                                    )
-                                    
-                                    await asyncio.to_thread(
-                                        open_llm_vtuber.conversation_chain,
-                                        user_input=vtuber_prompt,
-                                        skip_llm=True
-                                    )
-                                    
-                                    await websocket.send_text(json.dumps({
-                                        "type": "control",
-                                        "text": "conversation-chain-end"
-                                    }))
-                                    
-                                    # Signal vision completion
-                                    await websocket.send_text(json.dumps({
-                                        "type": "vision-complete"
-                                    }))
-                            except Exception as e:
-                                print(f"Vision processing error: {str(e)}")
+                                await websocket.send_text(json.dumps({
+                                    "type": "control",
+                                    "text": "conversation-chain-end"
+                                }))
+                                
+                                # Signal vision completion
+                                await websocket.send_text(json.dumps({
+                                    "type": "vision-complete"
+                                }))
+                            else:
                                 await websocket.send_text(json.dumps({
                                     "type": "full-text",
-                                    "text": f"Error processing image: {str(e)}"
+                                    "text": f"Vision processing failed: {result['error']}"
                                 }))
                         else:
                             await websocket.send_text(json.dumps({
@@ -387,34 +340,22 @@ class WebSocketServer:
                                 f.write(response.content)
 
                             # Process with vision model using the saved image
-                            vision_response = ollama.chat(
-                                model='llama3.2-vision',
-                                messages=[{
-                                    'role': 'user',
-                                    'content': data.get("content", "What is in this image? No more than 3 sentences"),
-                                    'images': [image_path]  # Use the saved image path
-                                }]
+                            result = self.process_vision_request(
+                                image_path=image_path,
+                                content=data.get("content", "What is in this image? No more than 3 sentences"),
+                                username=data.get("username")
                             )
-
-                            if vision_response:
+                            
+                            if result["success"]:
                                 await websocket.send_text(json.dumps({
                                     "type": "control",
                                     "text": "conversation-chain-start"
                                 }))
 
-                                # Clean the response text
-                                cleaned_response = self.clean_markdown(vision_response['message']['content'])
-                                username = data.get("username", "Someone")
-                                
-                                vtuber_prompt = self.clean_markdown(
-                                    f"{username} shared an image with me. Let me describe what I see: "
-                                    f"{cleaned_response}"
-                                )
-                                
                                 await asyncio.to_thread(
                                     open_llm_vtuber.conversation_chain,
-                                    user_input=vtuber_prompt,
-                                    skip_llm=True
+                                    user_input=result["prompt"],
+                                    # skip_llm=True enable this if you want vtuber to just read
                                 )
 
                                 await websocket.send_text(json.dumps({
@@ -425,6 +366,11 @@ class WebSocketServer:
                                 # Signal vision completion
                                 await websocket.send_text(json.dumps({
                                     "type": "vision-complete"
+                                }))
+                            else:
+                                await websocket.send_text(json.dumps({
+                                    "type": "full-text",
+                                    "text": f"Vision URL request failed: {result['error']}"
                                 }))
 
                         except Exception as e:
@@ -470,6 +416,65 @@ class WebSocketServer:
         # Remove *text* formatting
         text = re.sub(r'\*(.*?)\*', r'\1', text)
         return text
+
+    def process_vision_request(self, image_path: str, content: str, username: str = None) -> dict:
+        """
+        Process a vision request using ollama and have the VTuber react to it.
+        
+        Args:
+            image_path: Path to the image file
+            content: The prompt/question about the image
+            username: Optional username for personalized responses
+        
+        Returns:
+            dict: Response payload for websocket
+        """
+        try:
+            # Verify image exists
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Image not found at {image_path}")
+                
+            # Get vision model response
+            vision_response = ollama.chat(
+                model='llama3.2-vision',
+                messages=[{
+                    'role': 'user',
+                    'content': content,
+                    'images': [image_path]
+                }]
+            )
+            
+            if not vision_response:
+                raise ValueError("No response from vision model")
+                
+            # Clean the response text
+            cleaned_response = self.clean_markdown(vision_response['message']['content'])
+            
+            # Format the prompt to encourage VTuber to give her thoughts
+            if username:
+                vtuber_prompt = self.clean_markdown(
+                    f"{username} shared an image with me. The image shows: {cleaned_response}. "
+                    f"Let me share my thoughts and feelings about what I see! "
+                    f"[Express excitement, curiosity, or other emotions based on the content]"
+                )
+            else:
+                vtuber_prompt = self.clean_markdown(
+                    f"I'm looking at an image that shows: {cleaned_response}. "
+                    f"Let me tell you what I think about it! "
+                    f"[React naturally with emotions and personal thoughts about what you see]"
+                )
+                
+            return {
+                "success": True,
+                "prompt": vtuber_prompt
+            }
+            
+        except Exception as e:
+            print(f"Vision processing error: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
 
 def load_config_with_env(path) -> dict:
