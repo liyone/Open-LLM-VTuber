@@ -836,6 +836,24 @@
         function handleTwitchMessage(messageData) {
             console.log(`Twitch message from ${messageData.displayName}: ${messageData.message}`);
             
+            // Ignore !revive commands
+            if (messageData.message.trim().toLowerCase().startsWith('!revive')) {
+                console.log('Ignoring !revive command');
+                return;
+            }
+            
+            // Special handling for kanipuff
+            const isKanipuff = messageData.displayName.toLowerCase() === 'kanipuff';
+            if (isKanipuff) {
+                // For kanipuff, only process messages that start with !chat
+                if (!messageData.message.trim().toLowerCase().startsWith('!chat')) {
+                    console.log('Ignoring non-!chat message from kanipuff');
+                    return;
+                }
+                // Remove the !chat prefix from the message
+                messageData.message = messageData.message.replace(/^!chat\s*/i, '').trim();
+            }
+            
             // Check if message contains an image URL
             const imageUrlMatch = messageData.message.match(/(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/i);
             
@@ -844,8 +862,8 @@
                 `[Twitch: ${messageData.displayName}] ${messageData.message}`;
             
             if (imageUrlMatch) {
-                // Check if the message is from kanipuff (case insensitive)
-                if (messageData.displayName.toLowerCase() === 'kanipuff') {
+                // Check if the message is from kanipuff
+                if (isKanipuff) {
                     const imageUrl = imageUrlMatch[0];
                     console.log('Processing image from kanipuff:', imageUrl);
                     // Display the image directly from URL
