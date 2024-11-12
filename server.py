@@ -52,7 +52,7 @@ class WebSocketServer:
         self._mount_static_files()
         self.app.include_router(self.router)
         self.last_shown_image = None
-        self.recently_used_images = deque(maxlen=15)  # Keep track of last 15 images
+        self.recently_used_images = deque(maxlen=40)  # Keep track of last X images
         random.seed(time.time())  # Seed with current time
 
     def _setup_routes(self):
@@ -189,6 +189,7 @@ class WebSocketServer:
                     elif data.get("type") == "text-input":
                         print("Received text input from front end.")
                         user_input = data.get("text")
+                        skip_llm = data.get("skip_llm", False)  # Get skip_llm flag
 
                         async def _run_text_conversation():
                             try:
@@ -203,6 +204,7 @@ class WebSocketServer:
                                 await asyncio.to_thread(
                                     open_llm_vtuber.conversation_chain,
                                     user_input=user_input,
+                                    skip_llm=skip_llm  # Pass the flag to conversation_chain
                                 )
                                 await websocket.send_text(
                                     json.dumps(

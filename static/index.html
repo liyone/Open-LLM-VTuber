@@ -198,6 +198,7 @@
         }
     </style>
     <script src="randomPrompts.js"></script>
+    <script src="interestingPrompts.js"></script>
     <script src="twitchWs.js"></script>
 </head>
 
@@ -244,6 +245,7 @@
             <button id="randomVisionBtn">📸Random Vision Off</button>
             <button id="ollamaVisionBtn">👁️Test Vision</button>
             <button id="iframeBtn">🖼️Iframe Off</button>
+            <button id="interestingModeBtn">💭Interesting Mode Off</button>
         </div>
         <div class="user-message-container">
             <span class="user-message-label">You:</span>
@@ -473,6 +475,9 @@
                             // Start both timers if their respective modes are on
                             if (randomMode) {
                                 startInactivityTimer();
+                            }
+                            if (interestingMode) {
+                                startInterestingTimer();
                             }
                             if (randomVisionMode) {
                                 startVisionInactivityTimer();
@@ -725,7 +730,38 @@
             }
         }
 
-        // Add event listeners for text input
+        // Update the sendInterestingMessage function
+        function sendInterestingMessage(prompt) {
+            if (prompt && ws && ws.readyState === WebSocket.OPEN) {
+                setState("thinking-speaking");
+                ws.send(JSON.stringify({ 
+                    type: "text-input", 
+                    text: prompt.text,
+                    skip_llm: true  // Only skip LLM for interesting messages
+                }));
+                // Update the last user message display to show the title instead of full text
+                document.getElementById("lastUserMessage").textContent = prompt.title;
+                textInput.value = ""; // Clear the input box
+            }
+        }
+
+        // Update the interesting timer to pass the entire prompt object
+        function startInterestingTimer() {
+            if (interestingTimer) {
+                clearTimeout(interestingTimer);
+            }
+            if (interestingMode && state === "idle") {
+                interestingTimer = setTimeout(() => {
+                    if (state === "idle") {
+                        const randomPrompt = interestingPrompts[Math.floor(Math.random() * interestingPrompts.length)];
+                        textInput.value = randomPrompt.text;
+                        sendInterestingMessage(randomPrompt);  // Pass the entire prompt object
+                    }
+                }, INTERESTING_TIMEOUT);
+            }
+        }
+
+        // Update the event listeners to use the original function
         textInput.addEventListener('keypress', function(event) {
             if (event.key === "Enter") {
                 sendTextMessage();
@@ -1047,6 +1083,72 @@
                 img.src = `images/image.jpg?t=${timestamp}`;
             }
             img.style.display = 'block';
+        }
+
+        let interestingMode = false;
+        let interestingTimer = null;
+        const INTERESTING_TIMEOUT = 10000; // 10 seconds
+
+        function startInterestingTimer() {
+            if (interestingTimer) {
+                clearTimeout(interestingTimer);
+            }
+            if (interestingMode && state === "idle") {
+                interestingTimer = setTimeout(() => {
+                    if (state === "idle") {
+                        const randomPrompt = interestingPrompts[Math.floor(Math.random() * interestingPrompts.length)];
+                        textInput.value = randomPrompt.text;
+                        sendInterestingMessage(randomPrompt);  // Pass the entire prompt object
+                    }
+                }, INTERESTING_TIMEOUT);
+            }
+        }
+
+        function resetInterestingTimer() {
+            if (interestingTimer) {
+                clearTimeout(interestingTimer);
+            }
+            startInterestingTimer();
+        }
+
+        const interestingModeBtn = document.getElementById('interestingModeBtn');
+
+        interestingModeBtn.addEventListener('click', function() {
+            interestingMode = !interestingMode;
+            interestingModeBtn.textContent = interestingMode ? "💭Interesting Mode On" : "💭Interesting Mode Off";
+            
+            // Turn off random mode if it's on
+            if (interestingMode && randomMode) {
+                randomMode = false;
+                randomModeBtn.textContent = "🎲Random Mode Off";
+                clearTimeout(inactivityTimer);
+            }
+            
+            if (interestingMode) {
+                startInterestingTimer();
+            } else {
+                clearTimeout(interestingTimer);
+            }
+        });
+
+        // Add these event listeners to reset the interesting timer
+        textInput.addEventListener('keydown', resetInterestingTimer);
+        document.addEventListener('mousedown', resetInterestingTimer);
+        document.addEventListener('touchstart', resetInterestingTimer);
+
+        // Update the conversation-chain-end handler
+        if (message.text === "conversation-chain-end") {
+            setState("idle");
+            // Start both timers if their respective modes are on
+            if (randomMode) {
+                startInactivityTimer();
+            }
+            if (interestingMode) {
+                startInterestingTimer();
+            }
+            if (randomVisionMode) {
+                startVisionInactivityTimer();
+            }
         }
     </script>
 </body>
